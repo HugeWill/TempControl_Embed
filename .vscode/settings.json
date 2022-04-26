@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "prt_cmdscheduler.h": "c",
+        "prt_cmdregedit.h": "c",
+        "prt_cmddoublelist.h": "c",
+        "func_common.h": "c",
+        "task.h": "c",
+        "drv_uartdatainterface.h": "c",
+        "bsp_uart.h": "c"
+    }
+}
