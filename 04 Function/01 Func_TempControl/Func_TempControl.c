@@ -98,12 +98,12 @@ static bool Func_TempInit()
 {
 	uint8_t temp = 0;
 	uint8_t i;
-	REPORT_EVENT_DATA_TYPE* p_return = (REPORT_EVENT_DATA_TYPE*)malloc(sizeof(REPORT_EVENT_DATA_TYPE));
-	RETURN_ERR_DATA_TYPE* p_err = (RETURN_ERR_DATA_TYPE*)malloc(sizeof(RETURN_ERR_DATA_TYPE));
-	if(p_return == NULL)
-		return false;
-	if(p_err == NULL)
-		return false;
+//	REPORT_EVENT_DATA_TYPE* p_return = (REPORT_EVENT_DATA_TYPE*)malloc(sizeof(REPORT_EVENT_DATA_TYPE));
+//	RETURN_ERR_DATA_TYPE* p_err = (RETURN_ERR_DATA_TYPE*)malloc(sizeof(RETURN_ERR_DATA_TYPE));
+//	if(p_return == NULL)
+//		return false;
+//	if(p_err == NULL)
+//		return false;
 	_gp_E = At24c32Init(AT24C32_1, _PB_, _P6_, _PB_, _P5_);	/*EEP*/
 	_gp_ColdStart = OSSemCreate(0);
 	_gp_FanOFF = OSSemCreate(0);
@@ -207,18 +207,6 @@ static bool Func_TempInit()
 	//LiquidSensor
 	_gp_S[0] = Drv_SwitchingSensorInit(SWITCHINGSENSOR_1,FALLING,10,_PB_,_P7_);		//L
 	_gp_S[1] = Drv_SwitchingSensorInit(SWITCHINGSENSOR_2,FALLING,10,_PB_,_P8_);		//H
-	if(BSP_ReadPin(_gp_S[0]->port_number,_gp_S[0]->pin_number) == DOWN || BSP_ReadPin(_gp_S[1]->port_number,_gp_S[1]->pin_number) == DOWN)
-	{
-		p_err->err_code = ERR_LIQUID_INIT_ERR;
-		p_err->module_id = MODULE_LIQUID;
-		p_err->device_id = LIQUIDE_MAX;
-		_Drv_UsartReportErrToBuffer(0,0,sizeof(RETURN_ERR_DATA_TYPE),(uint8_t*)p_err);
-		free(p_err);
-		free(p_return);
-		OSTimeDlyHMSM(0,0,0,500);
-//		return false;
-		
-	}
 	for(i=0;i<LIQUIDE_MAX;i++)
 	{
 		if(_gp_S[i] == NULL)
@@ -270,12 +258,12 @@ static bool Func_TempInit()
 	SoftTimerCallBack[2] = SofeTimer3CallBack;
 	SoftTimerCallBack[3] = SofeTimer4CallBack;
 	//return success
-	p_return->event_id = EVENT_INIT_SUCCESS;
-	p_return->rsv[0] = 0;
-	p_return->rsv[1] = 0;
-	_Drv_UsartReportEventToBuffer(0,0,sizeof(REPORT_EVENT_DATA_TYPE),(uint8_t*)p_return);
-	free(p_return);
-	free(p_err);
+//	p_return->event_id = EVENT_INIT_SUCCESS;
+//	p_return->rsv[0] = 0;
+//	p_return->rsv[1] = 0;
+//	_Drv_UsartReportEventToBuffer(0,0,sizeof(REPORT_EVENT_DATA_TYPE),(uint8_t*)p_return);
+//	free(p_return);
+//	free(p_err);
 	return true;
 }
 
@@ -341,6 +329,9 @@ void Task1()
 					p_msg->rsv[1] = 0;
 					_Drv_UsartReportEventToBuffer(0,0,sizeof(REPORT_EVENT_DATA_TYPE),(uint8_t*)p_msg);
 				}
+			}
+			else{
+				back_delay = 0;
 			}
 		}
 		else
@@ -653,6 +644,8 @@ void Task6()
 {
 	uint8_t i = 0;
 	TEMP_REPORT_DATA_TYPE* p_return = (TEMP_REPORT_DATA_TYPE*)malloc(sizeof(TEMP_REPORT_DATA_TYPE));
+	if(p_return == NULL)
+		return;
 	p_return->event_id = EVENT_TEMP_REPORT;
 	while(1)
 	{
@@ -959,16 +952,18 @@ bool Func_Step_Pump_Switch(void* p_buffer)
 {
 	COMMON_CMD_DATA* p_msg = (COMMON_CMD_DATA*)p_buffer;
 	CMD_STEPPUMP_SWITCH_DATA* p_data = (CMD_STEPPUMP_SWITCH_DATA*)p_msg->data;
-	COMMON_REP_DATA* p_return = (COMMON_REP_DATA*)malloc(sizeof(COMMON_REP_DATA));
+	COMMON_RETURN_DATA_TYPE* p_return = (COMMON_RETURN_DATA_TYPE*)malloc(sizeof(COMMON_RETURN_DATA_TYPE));
 
 	uint32_t frame_id = p_msg->frame_head;
 	uint16_t cmd = p_data->cmd;
 	p_return->cmd = cmd;
+	p_return->rsv[0] = 0;
+	p_return->rsv[1] = 0;
 	if(p_data->on_off)
 		_g_Motor = 1;
 	else
 		_g_Motor = 0;
-	_Drv_UsartReturnDoneToBuffer(frame_id,cmd,sizeof(COMMON_REP_DATA),(uint8_t*)p_return);
+	_Drv_UsartReturnDoneToBuffer(frame_id,cmd,sizeof(COMMON_RETURN_DATA_TYPE),(uint8_t*)p_return);
 	free(p_return);
 	return true;
 	
@@ -982,11 +977,13 @@ bool Func_Temp_Report_Switch(void* p_buffer)
 {
 	COMMON_CMD_DATA* p_msg = (COMMON_CMD_DATA*)p_buffer;
 	CMD_TEMP_REPORT_SWITCH_DATA* p_data = (CMD_TEMP_REPORT_SWITCH_DATA*)p_msg->data;
-	COMMON_REP_DATA* p_return = (COMMON_REP_DATA*)malloc(sizeof(COMMON_REP_DATA));
+	COMMON_RETURN_DATA_TYPE* p_return = (COMMON_RETURN_DATA_TYPE*)malloc(sizeof(COMMON_RETURN_DATA_TYPE));
 
 	uint32_t frame_id = p_msg->frame_head;
 	uint16_t cmd = p_data->cmd;
 	p_return->cmd = cmd;
+	p_return->rsv[0] = 0;
+	p_return->rsv[1] = 0;
 	if(p_data->on_off)
 		_g_TempReport = 1;
 	else
