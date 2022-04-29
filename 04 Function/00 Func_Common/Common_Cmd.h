@@ -195,7 +195,7 @@ typedef enum{
 //握手命令结构体
 typedef struct{
     uint16_t cmd;               //命令字
-    uint8_t reverse[2];         //预留字段
+    uint16_t temp;         			//预设制冷液温度
 } HANDSHAKE_TYPE;
 //泵控制指令结构体
 typedef struct{
@@ -287,11 +287,11 @@ typedef struct{
 typedef struct{
 		uint16_t cmd;
 		uint16_t rw;				//0:write, 1:read
-		float a;
-		float	b;
-		float c;
-		float d;
-		float e;
+		uint32_t a;
+		uint32_t b;
+		uint32_t c;
+		uint32_t d;
+		uint32_t e;
 } FIBERX100_PARA_RW;
 //液路灌注
 typedef struct{
@@ -345,6 +345,15 @@ typedef struct
     uint16_t event_id;
     uint8_t rsv[2];         //字节对齐占位
 }REPORT_EVENT_DATA_TYPE;
+
+//上报事件数据结构
+typedef struct 
+{
+    uint16_t event_id;
+		uint8_t meachine_status;         //0:初始化完成，1:预制冷完成
+		uint8_t rsv;
+}REPORT_EVENT_DATA1_TYPE;
+
 //读取液位状态回复格式
 typedef struct 
 {

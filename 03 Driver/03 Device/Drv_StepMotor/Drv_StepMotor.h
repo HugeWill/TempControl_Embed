@@ -109,8 +109,8 @@ typedef struct
 	DRV_STEPMOTOR_LINE_TYPE* line_high;	/*高速运动参数表*/
 	DRV_STEPMOTOR_LINE_TYPE* line_mid;	/*中速运动参数表*/
 	DRV_STEPMOTOR_LINE_TYPE* line_low;	/*低速运动参数表*/
-    DRV_STEPMOTOR_LADDERSTEPGROUP_TYPE stLadStep_sp;	/*加速台阶-微步配置结构体*/
-    DRV_STEPMOTOR_LADDERSTEPGROUP_TYPE stLadStep_sd;	/*减速台阶-微步配置结构体*/
+	DRV_STEPMOTOR_LADDERSTEPGROUP_TYPE stLadStep_sp;	/*加速台阶-微步配置结构体*/
+	DRV_STEPMOTOR_LADDERSTEPGROUP_TYPE stLadStep_sd;	/*减速台阶-微步配置结构体*/
 	uint16_t* line_hig_fre;				/*高速运动频率表*/
 	uint16_t* line_mid_fre;				/*中速运动频率表*/
 	uint16_t* line_low_fre;				/*低速运动频率表*/

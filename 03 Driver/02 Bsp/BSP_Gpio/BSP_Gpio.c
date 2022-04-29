@@ -104,8 +104,8 @@ bool BSP_Init_Pin(BSP_PORT_ENUM port_number, BSP_PIN_ENUM pin_number, BSP_IO_TYP
 bool BSP_Init_PinInterrupt(BSP_PORT_ENUM port_number, BSP_PIN_ENUM pin_number)
 {
 	GPIO_InitTypeDef GPIO_InitStructure = {0};
-    EXTI_InitTypeDef EXTI_InitStructure = {0};
-    NVIC_InitTypeDef NVIC_InitStructure = {0};
+	EXTI_InitTypeDef EXTI_InitStructure = {0};
+	NVIC_InitTypeDef NVIC_InitStructure = {0};
 	IRQn_Type irq;
 	uint32_t line;
 	uint8_t port_source;

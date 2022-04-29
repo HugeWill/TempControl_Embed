@@ -21,7 +21,7 @@ OS_STK g_TaskStart_Stk[TASK_START_STK_SIZE];							/*初始任务 堆栈*/
 
 static OS_STK g_TaskCmdTransceiver_Stk[TASK_CMD_TRANSCEIVER_STK_SIZE];	/*指令收发器任务 堆栈*/
 static OS_STK g_TaskCmdScheduler1_Stk[TASK_CMD_SCHEDULER1_STK_SIZE];	/*指令调度器1任务 堆栈*/
-//static OS_STK g_TaskCmdScheduler2_Stk[TASK_CMD_SCHEDULER2_STK_SIZE];	/*指令调度器2任务 堆栈*/
+static OS_STK g_TaskCmdScheduler2_Stk[TASK_CMD_SCHEDULER2_STK_SIZE];	/*指令调度器2任务 堆栈*/
 
 static OS_STK g_TaskLed_Stk[TASK_LED_STK_SIZE];							/*系统指示灯任务 堆栈*/
 static OS_STK g_TaskResident1_Stk[TASK_RESIDENT_1_STK_SIZE];			/*私有常驻任务1 堆栈*/
@@ -55,9 +55,9 @@ void TaskStart(void* p_arg)
 	OSTaskCreate(TaskCmdScheduler1,  NULL, \
 				(OS_STK*)&g_TaskCmdScheduler1_Stk[TASK_CMD_SCHEDULER1_STK_SIZE - 1], \
 				TASK_CMD_SCHEDULER1_PRIO);	/*指令调度器1*/
-//		OSTaskCreate(TaskCmdScheduler2,  NULL, \
-//				(OS_STK*)&g_TaskCmdScheduler2_Stk[TASK_CMD_SCHEDULER1_STK_SIZE - 1], \
-//				TASK_CMD_SCHEDULER2_PRIO);	/*指令调度器2*/
+		OSTaskCreate(TaskCmdScheduler2,  NULL, \
+				(OS_STK*)&g_TaskCmdScheduler2_Stk[TASK_CMD_SCHEDULER2_STK_SIZE - 1], \
+				TASK_CMD_SCHEDULER2_PRIO);	/*指令调度器2*/
 				
 	/*创建功能层任务*/
     OSTaskCreate(TaskLed,            NULL, \
@@ -69,24 +69,24 @@ void TaskStart(void* p_arg)
     OSTaskCreate(TaskResident2,      NULL, \
 				(OS_STK*)&g_TaskResident2_Stk[TASK_RESIDENT_2_STK_SIZE - 1], \
 				TASK_RESIDENT_2_PRIO);		/*私有常驻任务2*/
-		OSTaskCreate(Task1,      NULL, \
-				(OS_STK*)&g_Task1_Stk[TASK1_STK_SIZE - 1], \
-				TASK1_PRIO);		/*私有常驻任务2*/
-		OSTaskCreate(Task2,      NULL, \
-				(OS_STK*)&g_Task2_Stk[TASK2_STK_SIZE - 1], \
-				TASK2_PRIO);		/*私有常驻任务2*/
-		OSTaskCreate(Task3,      NULL, \
-				(OS_STK*)&g_Task3_Stk[TASK3_STK_SIZE - 1], \
-				TASK3_PRIO);		/*私有常驻任务2*/
-		OSTaskCreate(Task4,      NULL, \
-				(OS_STK*)&g_Task4_Stk[TASK4_STK_SIZE - 1], \
-				TASK4_PRIO);		/*私有常驻任务2*/
-		OSTaskCreate(Task5,      NULL, \
-				(OS_STK*)&g_Task5_Stk[TASK5_STK_SIZE - 1], \
-				TASK5_PRIO);		/*私有常驻任务2*/
-		OSTaskCreate(Task6,      NULL, \
-				(OS_STK*)&g_Task6_Stk[TASK6_STK_SIZE - 1], \
-				TASK6_PRIO);		/*私有常驻任务2*/
+//		OSTaskCreate(Task1,      NULL, \
+//				(OS_STK*)&g_Task1_Stk[TASK1_STK_SIZE - 1], \
+//				TASK1_PRIO);		/*私有常驻任务2*/
+//		OSTaskCreate(Task2,      NULL, \
+//				(OS_STK*)&g_Task2_Stk[TASK2_STK_SIZE - 1], \
+//				TASK2_PRIO);		/*私有常驻任务2*/
+//		OSTaskCreate(Task3,      NULL, \
+//				(OS_STK*)&g_Task3_Stk[TASK3_STK_SIZE - 1], \
+//				TASK3_PRIO);		/*私有常驻任务2*/
+//		OSTaskCreate(Task4,      NULL, \
+//				(OS_STK*)&g_Task4_Stk[TASK4_STK_SIZE - 1], \
+//				TASK4_PRIO);		/*私有常驻任务2*/
+//		OSTaskCreate(Task5,      NULL, \
+//				(OS_STK*)&g_Task5_Stk[TASK5_STK_SIZE - 1], \
+//				TASK5_PRIO);		/*私有常驻任务2*/
+//		OSTaskCreate(Task6,      NULL, \
+//				(OS_STK*)&g_Task6_Stk[TASK6_STK_SIZE - 1], \
+//				TASK6_PRIO);		/*私有常驻任务2*/
 	
     OSTaskSuspend(TASK_START_PRIO);	/* suspend but not delete */
     OS_EXIT_CRITICAL();
@@ -97,16 +97,18 @@ void TaskStart(void* p_arg)
 */
 static void TaskCmdTransceiver(void* p_arg)
 {	
-
+	OS_CPU_SR  cpu_sr;
 	_gp_usart1 = Drv_UartDataInterfaceInit(UARTDATAINTERFACE_1,_USART1_,115200,_PA_,_P9_,_PA_,_P10_);
 	while (1)
 	{
 		OSTimeDlyHMSM(0,0,0,5);
+		OS_ENTER_CRITICAL();
 		if(USART_TX_IDLE != _gp_usart1->tx_status)
 		{
 			Drv_UartSendDatas(&Usart_Tx_Buffer[0][0]);
 			_Drv_UartTxFifoForward();
 		}
+		OS_EXIT_CRITICAL();
 	}
 	
 }
@@ -121,6 +123,24 @@ static void TaskCmdScheduler1(void* p_arg)
 	
 
 	CMD_REGEDIT_TYPE* p_cmd_regedit = Cmd_Regedit_Init(CMD_REGEDIT_1,MODULE_1);
+	OSTaskCreate(Task1,      NULL, \
+			(OS_STK*)&g_Task1_Stk[TASK1_STK_SIZE - 1], \
+			TASK1_PRIO);		/*私有常驻任务2*/
+	OSTaskCreate(Task2,      NULL, \
+			(OS_STK*)&g_Task2_Stk[TASK2_STK_SIZE - 1], \
+			TASK2_PRIO);		/*私有常驻任务2*/
+	OSTaskCreate(Task3,      NULL, \
+			(OS_STK*)&g_Task3_Stk[TASK3_STK_SIZE - 1], \
+			TASK3_PRIO);		/*私有常驻任务2*/
+	OSTaskCreate(Task4,      NULL, \
+			(OS_STK*)&g_Task4_Stk[TASK4_STK_SIZE - 1], \
+			TASK4_PRIO);		/*私有常驻任务2*/
+	OSTaskCreate(Task5,      NULL, \
+			(OS_STK*)&g_Task5_Stk[TASK5_STK_SIZE - 1], \
+			TASK5_PRIO);		/*私有常驻任务2*/
+	OSTaskCreate(Task6,      NULL, \
+			(OS_STK*)&g_Task6_Stk[TASK6_STK_SIZE - 1], \
+			TASK6_PRIO);		/*私有常驻任务2*/
 	while (1)
 	{
 		if(p_cmd_regedit == NULL)
@@ -137,18 +157,6 @@ static void TaskCmdScheduler1(void* p_arg)
 			_Drv_UsartCmdFifoForward();									//指令缓冲前移
 		}
 	}	
-}
-
-/* 指令调度器2任务
-  -----------------------------------
-*/
-static void TaskCmdScheduler2(void* p_arg)
-{
-	uint8_t err = OS_ERR_NONE;
-	while (1)
-	{
-		OSTimeDlyHMSM(0,0,0,500);
-	}
 }
 
 

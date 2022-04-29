@@ -27,8 +27,8 @@
 #include "BSP_Uart.h"
 #include "ucos_ii.h"
 
-#define DTADLEN 10 /*接收数据长度*/
-extern uint8_t Temp_Data[10][3];
+#define DTADLEN 50 /*接收数据长度*/
+extern uint8_t Temp_Data[50][3];
 /*X100m模块枚举*/
 typedef enum
 {

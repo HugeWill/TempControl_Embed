@@ -183,10 +183,10 @@ static DRV_PWM_TIMERDRIVEN_STATUS_ENUM _PWM_Update(DRV_PWM_TIMERDRIVEN_TYPE* p_u
 //		count = (count + 1) % 2;
 //		if(count == 0)								/*输出一个完整脉冲后，剩余脉冲数减一*/
 //		{
-		if(--(p_unit->remaining_pulse) <= 0)	/*剩余脉冲数自减，输出完成后，状态切换*//*20191011修改，remaining_pulse赋值时已经乘以2，不再使用count计数*/
-			{
-				PWM_Disable(p_unit);
-			}
+//		if(--(p_unit->remaining_pulse) <= 0)	/*剩余脉冲数自减，输出完成后，状态切换*//*20191011修改，remaining_pulse赋值时已经乘以2，不再使用count计数*/
+//			{
+//				PWM_Disable(p_unit);
+//			}
 //		}
 	}
 	
@@ -205,7 +205,7 @@ static void _Drv_PWM1IRQHandler(void)
 	{
 		if(_PWM_Update(_gp_PWMunits[PWM_1]) != PWM_BUSY)
 		{
-			__PWM_Done(_gp_PWMunits[PWM_1]);
+//			__PWM_Done(_gp_PWMunits[PWM_1]);
 		}
 	}
 }

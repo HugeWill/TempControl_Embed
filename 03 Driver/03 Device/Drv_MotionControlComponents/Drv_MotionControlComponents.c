@@ -141,68 +141,68 @@ DRV_MCC_TYPE* MCC_Init(MCC_ENUM id, \
 	if(p_mcc->sem == NULL)						/*组件信号量*/
 		p_mcc->sem = OSSemCreate(0);
 		
-	p_mcc->reset_port_number = reset_port_number;		/*复位信号*/
-	p_mcc->reset_pin_number = reset_pin_number;
-	BSP_Init_PinInterrupt(reset_port_number, reset_pin_number);
-		
-	p_mcc->d_code_port_number = d_code_port_number;		/*码齿信号*/
-	p_mcc->d_code_pin_number = d_code_pin_number;
-	BSP_Init_PinInterrupt(d_code_port_number, d_code_pin_number);
+//	p_mcc->reset_port_number = reset_port_number;		/*复位信号*/
+//	p_mcc->reset_pin_number = reset_pin_number;
+//	BSP_Init_PinInterrupt(reset_port_number, reset_pin_number);
+//		
+//	p_mcc->d_code_port_number = d_code_port_number;		/*码齿信号*/
+//	p_mcc->d_code_pin_number = d_code_pin_number;
+//	BSP_Init_PinInterrupt(d_code_port_number, d_code_pin_number);
+//	
+//	p_mcc->strike_port_number = strike_port_number;		/*防撞信号*/
+//	p_mcc->strike_pin_number = strike_pin_number;
+//	BSP_Init_PinInterrupt(strike_port_number, strike_pin_number);
+//	
+//	p_mcc->strike2_port_number = strike2_port_number;		/*第二防撞信号*/
+//	p_mcc->strike2_pin_number = strike2_pin_number;
+//	BSP_Init_PinInterrupt(strike2_port_number, strike2_pin_number);
 	
-	p_mcc->strike_port_number = strike_port_number;		/*防撞信号*/
-	p_mcc->strike_pin_number = strike_pin_number;
-	BSP_Init_PinInterrupt(strike_port_number, strike_pin_number);
-	
-	p_mcc->strike2_port_number = strike2_port_number;		/*第二防撞信号*/
-	p_mcc->strike2_pin_number = strike2_pin_number;
-	BSP_Init_PinInterrupt(strike2_port_number, strike2_pin_number);
-	
-	switch(p_mcc->id)
-	{
-		case MCC_1:
-			if(p_mcc->reset_pin_number != _PIN_BUTT_)	/*有复位信号，登记中断处理函数*/
-				BSP_ExtiIRQHandler[p_mcc->reset_pin_number] = MCC1_ResetExtiIrqHandler;
-			if(p_mcc->d_code_pin_number != _PIN_BUTT_)	/*有码齿信号，登记中断处理函数*/
-				BSP_ExtiIRQHandler[p_mcc->d_code_pin_number] = MCC1_DCodeExtiIrqHandler;
-			if(p_mcc->strike_pin_number != _PIN_BUTT_)	/*有撞击信号，登记中断处理函数*/
-				BSP_ExtiIRQHandler[p_mcc->strike_pin_number] = MCC1_StrikeExtiIrqHandler;
-			if(p_mcc->strike2_pin_number != _PIN_BUTT_)	/*有第二撞击信号，登记中断处理函数*/
-				BSP_ExtiIRQHandler[p_mcc->strike2_pin_number] = MCC1_StrikeExtiIrqHandler;
-			break;
-		case MCC_2:
-			if(p_mcc->reset_pin_number != _PIN_BUTT_)	/*有复位信号，登记中断处理函数*/
-				BSP_ExtiIRQHandler[p_mcc->reset_pin_number] = MCC2_ResetExtiIrqHandler;
-			if(p_mcc->d_code_pin_number != _PIN_BUTT_)	/*有码齿信号，登记中断处理函数*/
-				BSP_ExtiIRQHandler[p_mcc->d_code_pin_number] = MCC2_DCodeExtiIrqHandler;
-			if(p_mcc->strike_pin_number != _PIN_BUTT_)	/*有撞击信号，登记中断处理函数*/
-				BSP_ExtiIRQHandler[p_mcc->strike_pin_number] = MCC2_StrikeExtiIrqHandler;
-			if(p_mcc->strike2_pin_number != _PIN_BUTT_)	/*有第二撞击信号，登记中断处理函数*/
-				BSP_ExtiIRQHandler[p_mcc->strike2_pin_number] = MCC2_StrikeExtiIrqHandler;
-			break;
-		case MCC_3:
-			if(p_mcc->reset_pin_number != _PIN_BUTT_)	/*有复位信号，登记中断处理函数*/
-				BSP_ExtiIRQHandler[p_mcc->reset_pin_number] = MCC3_ResetExtiIrqHandler;
-			if(p_mcc->d_code_pin_number != _PIN_BUTT_)	/*有码齿信号，登记中断处理函数*/
-				BSP_ExtiIRQHandler[p_mcc->d_code_pin_number] = MCC3_DCodeExtiIrqHandler;
-			if(p_mcc->strike_pin_number != _PIN_BUTT_)	/*有撞击信号，登记中断处理函数*/
-				BSP_ExtiIRQHandler[p_mcc->strike_pin_number] = MCC3_StrikeExtiIrqHandler;
-			if(p_mcc->strike2_pin_number != _PIN_BUTT_)	/*有第二撞击信号，登记中断处理函数*/
-				BSP_ExtiIRQHandler[p_mcc->strike2_pin_number] = MCC3_StrikeExtiIrqHandler;
-			break;
-		case MCC_4:
-			if(p_mcc->reset_pin_number != _PIN_BUTT_)	/*有复位信号，登记中断处理函数*/
-				BSP_ExtiIRQHandler[p_mcc->reset_pin_number] = MCC4_ResetExtiIrqHandler;
-			if(p_mcc->d_code_pin_number != _PIN_BUTT_)	/*有码齿信号，登记中断处理函数*/
-				BSP_ExtiIRQHandler[p_mcc->d_code_pin_number] = MCC4_DCodeExtiIrqHandler;
-			if(p_mcc->strike_pin_number != _PIN_BUTT_)	/*有撞击信号，登记中断处理函数*/
-				BSP_ExtiIRQHandler[p_mcc->strike_pin_number] = MCC4_StrikeExtiIrqHandler;
-			if(p_mcc->strike2_pin_number != _PIN_BUTT_)	/*有第二撞击信号，登记中断处理函数*/
-				BSP_ExtiIRQHandler[p_mcc->strike2_pin_number] = MCC4_StrikeExtiIrqHandler;
-			break;
-		default:
-			break;
-	}
-		
+//	switch(p_mcc->id)
+//	{
+//		case MCC_1:
+//			if(p_mcc->reset_pin_number != _PIN_BUTT_)	/*有复位信号，登记中断处理函数*/
+//				BSP_ExtiIRQHandler[p_mcc->reset_pin_number] = MCC1_ResetExtiIrqHandler;
+//			if(p_mcc->d_code_pin_number != _PIN_BUTT_)	/*有码齿信号，登记中断处理函数*/
+//				BSP_ExtiIRQHandler[p_mcc->d_code_pin_number] = MCC1_DCodeExtiIrqHandler;
+//			if(p_mcc->strike_pin_number != _PIN_BUTT_)	/*有撞击信号，登记中断处理函数*/
+//				BSP_ExtiIRQHandler[p_mcc->strike_pin_number] = MCC1_StrikeExtiIrqHandler;
+//			if(p_mcc->strike2_pin_number != _PIN_BUTT_)	/*有第二撞击信号，登记中断处理函数*/
+//				BSP_ExtiIRQHandler[p_mcc->strike2_pin_number] = MCC1_StrikeExtiIrqHandler;
+//			break;
+//		case MCC_2:
+//			if(p_mcc->reset_pin_number != _PIN_BUTT_)	/*有复位信号，登记中断处理函数*/
+//				BSP_ExtiIRQHandler[p_mcc->reset_pin_number] = MCC2_ResetExtiIrqHandler;
+//			if(p_mcc->d_code_pin_number != _PIN_BUTT_)	/*有码齿信号，登记中断处理函数*/
+//				BSP_ExtiIRQHandler[p_mcc->d_code_pin_number] = MCC2_DCodeExtiIrqHandler;
+//			if(p_mcc->strike_pin_number != _PIN_BUTT_)	/*有撞击信号，登记中断处理函数*/
+//				BSP_ExtiIRQHandler[p_mcc->strike_pin_number] = MCC2_StrikeExtiIrqHandler;
+//			if(p_mcc->strike2_pin_number != _PIN_BUTT_)	/*有第二撞击信号，登记中断处理函数*/
+//				BSP_ExtiIRQHandler[p_mcc->strike2_pin_number] = MCC2_StrikeExtiIrqHandler;
+//			break;
+//		case MCC_3:
+//			if(p_mcc->reset_pin_number != _PIN_BUTT_)	/*有复位信号，登记中断处理函数*/
+//				BSP_ExtiIRQHandler[p_mcc->reset_pin_number] = MCC3_ResetExtiIrqHandler;
+//			if(p_mcc->d_code_pin_number != _PIN_BUTT_)	/*有码齿信号，登记中断处理函数*/
+//				BSP_ExtiIRQHandler[p_mcc->d_code_pin_number] = MCC3_DCodeExtiIrqHandler;
+//			if(p_mcc->strike_pin_number != _PIN_BUTT_)	/*有撞击信号，登记中断处理函数*/
+//				BSP_ExtiIRQHandler[p_mcc->strike_pin_number] = MCC3_StrikeExtiIrqHandler;
+//			if(p_mcc->strike2_pin_number != _PIN_BUTT_)	/*有第二撞击信号，登记中断处理函数*/
+//				BSP_ExtiIRQHandler[p_mcc->strike2_pin_number] = MCC3_StrikeExtiIrqHandler;
+//			break;
+//		case MCC_4:
+//			if(p_mcc->reset_pin_number != _PIN_BUTT_)	/*有复位信号，登记中断处理函数*/
+//				BSP_ExtiIRQHandler[p_mcc->reset_pin_number] = MCC4_ResetExtiIrqHandler;
+//			if(p_mcc->d_code_pin_number != _PIN_BUTT_)	/*有码齿信号，登记中断处理函数*/
+//				BSP_ExtiIRQHandler[p_mcc->d_code_pin_number] = MCC4_DCodeExtiIrqHandler;
+//			if(p_mcc->strike_pin_number != _PIN_BUTT_)	/*有撞击信号，登记中断处理函数*/
+//				BSP_ExtiIRQHandler[p_mcc->strike_pin_number] = MCC4_StrikeExtiIrqHandler;
+//			if(p_mcc->strike2_pin_number != _PIN_BUTT_)	/*有第二撞击信号，登记中断处理函数*/
+//				BSP_ExtiIRQHandler[p_mcc->strike2_pin_number] = MCC4_StrikeExtiIrqHandler;
+//			break;
+//		default:
+//			break;
+//	}
+//		
 	/*------------------------------变常*/
 	p_mcc->true_station = 0;					/*工位实际脉冲数记录*/
 	p_mcc->preset_location_now = NULL;			/*当前目标预设位置*/

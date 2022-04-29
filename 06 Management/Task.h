@@ -43,7 +43,7 @@
 #define TASK_RESIDENT_1_STK_SIZE		128		/*私有常驻任务 堆栈深度*/
 #define TASK_RESIDENT_2_STK_SIZE		128		/*私有常驻任务 堆栈深度*/
 #define TASK1_STK_SIZE 128		/*私有常驻任务 堆栈深度*/
-#define TASK2_STK_SIZE 128    /*私有常驻任务 堆栈深度*/
+#define TASK2_STK_SIZE 256    /*私有常驻任务 堆栈深度*/
 #define TASK3_STK_SIZE 128    /*私有常驻任务 堆栈深度*/
 #define TASK4_STK_SIZE 128    /*私有常驻任务 堆栈深度*/
 #define TASK5_STK_SIZE 256    /*私有常驻任务 堆栈深度*/
@@ -90,7 +90,7 @@ static void TaskCmdScheduler1(void* p_arg);
 /* 指令调度器2线程（私有指令线程2）
   -----------------------------------
 */
-static void TaskCmdScheduler2(void* p_arg);
+extern void TaskCmdScheduler2(void* p_arg);
 /* LED指示灯线程
   -----------------------------------
 */

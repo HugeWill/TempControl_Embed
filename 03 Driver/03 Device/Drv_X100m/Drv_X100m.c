@@ -25,7 +25,7 @@ static uint8_t StopCommand[4]  = {0xFA, 0x07, 0x00, 0x00}; /*Í£Ö¹Ä£¿é¶ÔÍâ·¢ËÍÇ»³
 static uint8_t QueryCommand[2] = {0xFB, 0x03};						 /*²éÑ¯Ä£¿éµ±Ç°´úÂë°æ±¾ÐÅÏ¢*/
 static uint8_t PresCommandH[2] = {0xFB, 0x57};						 /*·¢ËÍ»·¾³Ñ¹Á¦*/
 static uint8_t PresCommandL[2] = {0xFB, 0x56};						 /*·¢ËÍ»·¾³Ñ¹Á¦*/
-uint8_t Temp_Data[10][3];
+uint8_t Temp_Data[50][3];
 DRV_X100M_TYPE *_gp_X100mUnits[X100M_BUTT] = {0};	/*NTCµÄ×¢²á±í*/
 
 /*
@@ -104,7 +104,7 @@ DRV_X100M_TYPE *Drv_X100mInit(DRV_X100M_ENUM id, uint32_t baud_rate, BSP_USART_E
 	memset(p_unit->rx_buffer,0x00,DTADLEN);
 	p_unit->status = X100M_UNDEFINE;
 	p_unit->x100msem = OSSemCreate(0); 
-	for(i=0;i<10;i++)
+	for(i=0;i<50;i++)
 	{
 		memset(&Temp_Data[i][0],0,3);
 	}
@@ -143,11 +143,13 @@ double Drv_GetX100mTemp(DRV_X100M_TYPE *p_unit)
 {
 	uint8_t err;
 	uint8_t i;
+	uint8_t j;
 	uint8_t count = 0;
-	double temp[10];
+	double temp[50];
+	double exchange;
 	p_unit->index = 0;
 	memset(p_unit->rx_buffer,0x00,DTADLEN);
-	for(i=0;i<10;i++)
+	for(i=0;i<50;i++)
 	{
 		memset(&Temp_Data[i][0],0,3);
 	}
@@ -165,7 +167,7 @@ double Drv_GetX100mTemp(DRV_X100M_TYPE *p_unit)
 	}
 	p_unit->status = X100M_TEMP;
 	Drv_X100m1Enable(p_unit);
-	OSSemPend(p_unit->x100msem,2000,&err);
+	OSSemPend(p_unit->x100msem,3000,&err);
 	Drv_X100mDisable(p_unit);
 	p_unit->status = X100M_UNDEFINE;
 	if(err != OS_ERR_NONE)
@@ -183,29 +185,42 @@ double Drv_GetX100mTemp(DRV_X100M_TYPE *p_unit)
 //	}
 //	else if(p_unit->index == 3)
 //	{
-	for(i=0;i<10;i++)
+	for(i=0;i<50;i++)
 	{
 		if(!(Temp_Data[i][0] == 0xFF && Temp_Data[i][1] == 0xFF && Temp_Data[i][2] == 0xFF))
 		{
-			temp[i] = ((Temp_Data[i][0]<<8) | (Temp_Data[i][1]&0xFF)) + (Temp_Data[i][2] / 256.0); 
-			temp[i] = p_unit->temp_para.a * pow(temp[i], 4) + p_unit->temp_para.b * pow(temp[i], 3)\
-								 + p_unit->temp_para.c * pow(temp[i], 2) + p_unit->temp_para.d *temp[i]			  \
+			temp[count] = ((Temp_Data[i][0]<<8) | (Temp_Data[i][1]&0xFF)) + (Temp_Data[i][2] / 256.0); 
+			temp[count] = p_unit->temp_para.a * pow(temp[count], 4) + p_unit->temp_para.b * pow(temp[count], 3)\
+								 + p_unit->temp_para.c * pow(temp[count], 2) + p_unit->temp_para.d *temp[count]			  \
 								 + p_unit->temp_para.e;/*¼ÆËãÎÂ¶È*/
-			p_unit->temp = p_unit->temp + temp[i];
 			count++;
 		}
-		else
-			temp[i] = 0;
 	}
-	if(count <= 1)
+	if(count>40)
+	{
+		for(j=0;j<=count;j++)
+		{
+			if(temp[j]!=0 && temp[j+1] != 0){
+				if(temp[j] < temp[j+1])
+				{
+					exchange = temp[j];
+					temp[j] = temp[j+1];
+					temp[j] = exchange;
+				}
+			}
+		}
+		j = 0;
+		p_unit->temp = 0;
+		for(i=14;i<count-15;i++)
+		{
+			p_unit->temp = p_unit->temp + temp[i];
+			j++;
+		}
+	}
+	if(j <= 1)
 		p_unit->temp = 0;		//Fault
 	else
-		p_unit->temp = p_unit->temp/count;
-//	}
-//	else
-//	{
-//		return 0;
-//	}
+		p_unit->temp = p_unit->temp/j;
 	
 	return p_unit->temp;
 }
@@ -415,7 +430,7 @@ static void Drv_X100m1_IRQHandler(void)
 					{
 						memcpy(&Temp_Data[i][0],_gp_X100mUnits[0]->rx_buffer,3);
 						i++;
-						if(i == 10)
+						if(i == 50)
 						{
 							OSSemPost(_gp_X100mUnits[0]->x100msem);
 							i = 0;

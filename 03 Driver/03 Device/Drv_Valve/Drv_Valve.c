@@ -35,7 +35,7 @@ DRV_VALVE_TYPE* Valve_Init(DRV_VALVE_ENUM id, \
 						   DRV_VALVE_LOGIC_TYPE_ENUM valve_logic, \
 						   BSP_PORT_ENUM port_number, BSP_PIN_ENUM pin_number)
 {	
-	DRV_VALVE_TYPE* p_unit = (DRV_VALVE_TYPE*)calloc(1, sizeof(DRV_VALVE_TYPE));	/*申请内存*/
+	DRV_VALVE_TYPE* p_unit = (DRV_VALVE_TYPE*)malloc(sizeof(DRV_VALVE_TYPE));	/*申请内存*/
 	
 	/*分配失败返回NULL*/
 	if(p_unit == NULL)

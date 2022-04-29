@@ -5,7 +5,7 @@
 #include "Common_Cmd.h"
 #include "Prt_CmdRegedit.h"
 #include "math.h"
-
+#include "Drv_Encoder.h"
 
 
 #pragma pack(4)
@@ -38,7 +38,7 @@ typedef struct{
 /*X100mÄ£¿éÎÂ¶ÈÏµÊý*/
 typedef struct
 {
-	uint8_t flag;
+	uint32_t flag;
 	float a;
 	float b;
 	float c;
@@ -66,6 +66,11 @@ typedef enum{
 	UP = 0,
 	DOWN,
 }LIQUID_SENSOR_ENUM;
+
+typedef union{
+	uint32_t ch4;
+	float fl;
+} PARA_CONVERT_UNION;
 /* 初始化模块
   ------------------------------
   返回值：true，成功；false，失败

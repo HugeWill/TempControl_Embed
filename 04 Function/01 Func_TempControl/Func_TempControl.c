@@ -16,6 +16,10 @@
 #define KP_INIT0 100.0
 #define KI_INIT0 0.0
 #define KD_INIT0 0.0
+//X100para
+#define K 0.769230769
+#define CON_B (-20121.53846)
+#define TEMP(x) K*x+CON_B
 //³£ÊýPI
 //#define PI 3.1415926
 #define ON (1)
@@ -44,7 +48,10 @@ OS_EVENT*	_gp_FanOFF;
 volatile uint8_t _g_Motor = 0;				//0:close ,1:open
 static uint32_t _g_pumpstarttime = 0;
 volatile uint8_t _g_TempReport = 0;		//0:close ,1:open
+static uint8_t meachine_status = 0;		
 uint16_t back_delay = 0;
+uint16_t freezer_goal_temp = 0;			
+uint16_t pre_freezer_time = 0;
 static OS_TMR *SofeTimer[4] = {NULL}; /*?????????*/
 /*?????1????*/
 typedef void Func(void *ptmr,void *p_arg);
@@ -53,15 +60,18 @@ void SofeTimer1CallBack(void *ptmr,void *p_arg);
 void SofeTimer2CallBack(void *ptmr,void *p_arg);
 void SofeTimer3CallBack(void *ptmr,void *p_arg);
 void SofeTimer4CallBack(void *ptmr,void *p_arg);
-
-TEMP_PARA_TYPE _g_ControlParameter = {0x11, 1, 1, 2, 6,22.0*100};
+void _Func_AllFreezerOff(void);
+void _Func_AllHeaterOff(void);
+float _Func_Int2Float(uint32_t data);
+uint32_t _Func_Float2Int(float fl);
+TEMP_PARA_TYPE _g_ControlParameter = {0x11, 1, 0, 4, 6,33.0*100};
 //X100_PARAMETER _g_X100_Para[5] = {{0x11,0,165951226655946,19},\
 //																	{0x11,-1,145656862190146,15},\
 //																	{0x11,29659,1966092086,10},\
 //																	{0x11,-341257080,27809,6},\
 //																	{0x11,1472431868192,86,2}};
 MOTOR_SPEED_CUREV _g_Motor_Curve = {0x11,50,300,2,40,5000};
-FIBERX100M_PARA_TYPE _g_X100 = {0x11,0.0000165951426655946,-1.14565686219046,29659.1966092086,-341257080.027809,1472431868192.86};
+FIBERX100M_PARA_TYPE _g_X100 = {0x11,0,0,0,0.528689,17176};
 
 volatile LIQUID_STATUS_ENUM _g_Liquid_Status = LIQUID_NULL;			//0:NULL,1:Fill,2:Back
 bool Func_PrivateInit1(DList* dlist)
@@ -107,11 +117,8 @@ static bool Func_TempInit()
 	_gp_E = At24c32Init(AT24C32_1, _PB_, _P6_, _PB_, _P5_);	/*EEP*/
 	_gp_ColdStart = OSSemCreate(0);
 	_gp_FanOFF = OSSemCreate(0);
-	temp = At24c32ReadByte(_gp_E,1*32);
-	if(temp == 0x11) At24c32ReadPage(_gp_E,1,(uint8_t*)(&_g_ControlParameter));
-	temp = At24c32ReadByte(_gp_E,10*32);
-	if(temp == 0x11) At24c32ReadPage(_gp_E,10,(uint8_t*)(&_g_Motor_Curve));
-	temp = At24c32ReadByte(_gp_E,20*32);
+
+	At24c32WritePage(_gp_E,20,(uint8_t*)(&_g_X100));
 	if(temp == 0x11) At24c32ReadPage(_gp_E,20,(uint8_t*)(&_g_X100));
 	
 	/*StepPumpInit*/
@@ -130,11 +137,11 @@ static bool Func_TempInit()
 	BSP_WritePin(_PE_,_P8_,1);
 	if(_gp_StepPump == NULL)
 		return false;
-	//Default Speed
-	MCC_SetStempMotorLine5(_gp_StepPump,_g_Motor_Curve.start_fre,_g_Motor_Curve.end_fre,\
-												_g_Motor_Curve.each_lader_step,_g_Motor_Curve.lader_num,_g_Motor_Curve.s_para,0);
-	MCC_SetStempMotorLine5(_gp_StepPump,_g_Motor_Curve.start_fre,_g_Motor_Curve.end_fre,\
-												_g_Motor_Curve.each_lader_step,_g_Motor_Curve.lader_num,_g_Motor_Curve.s_para,1);
+//	//Default Speed
+//	MCC_SetStempMotorLine5(_gp_StepPump,_g_Motor_Curve.start_fre,_g_Motor_Curve.end_fre,\
+//												_g_Motor_Curve.each_lader_step,_g_Motor_Curve.lader_num,_g_Motor_Curve.s_para,0);
+//	MCC_SetStempMotorLine5(_gp_StepPump,_g_Motor_Curve.start_fre,_g_Motor_Curve.end_fre,\
+//												_g_Motor_Curve.each_lader_step,_g_Motor_Curve.lader_num,_g_Motor_Curve.s_para,2);
 	//Valve Initial
 	_gp_V = Valve_Init(VALVE_1,VALVE_NORMAL_CLOSE,VALVE_POSITIVE_LOGIC,_PC_,_P7_);
 	if(_gp_V == NULL)
@@ -219,9 +226,11 @@ static bool Func_TempInit()
 	//BUTTON
 //	_gp_B[0] = Drv_SwitchingSensorInit(SWITCHINGSENSOR_3,RISING,10,_PD_,_P14_);
 //	_gp_B[1] = Drv_SwitchingSensorInit(SWITCHINGSENSOR_4,RISING,10,_PD_,_P13_);
+//	_gp_Encoder[ENCODER_1] = Drv_Encode_Init(ENCODER_1,_PD_,_P14_,_PD_,_P13_);
 	_gp_B[SS1_BUTTON] = Drv_SwitchingSensorInit(SWITCHINGSENSOR_5,RISING,10,_PD_,_P15_);
 //	_gp_B[3] = Drv_SwitchingSensorInit(SWITCHINGSENSOR_6,RISING,10,_PD_,_P11_);
 //	_gp_B[4] = Drv_SwitchingSensorInit(SWITCHINGSENSOR_7,RISING,10,_PD_,_P10_);
+	_gp_Encoder = Drv_Encode_Init(ENCODER_1,_PD_,_P14_,_PD_,_P13_,_PD_,_P11_,_PD_,_P10_);
 	_gp_B[SS2_BUTTON] = Drv_SwitchingSensorInit(SWITCHINGSENSOR_8,RISING,10,_PD_,_P12_);
 	for(i=0;i<SS_MAX;i++)
 	{
@@ -239,16 +248,16 @@ static bool Func_TempInit()
 	}
 	Led_On(_gp_LED[LED_GREEN]);
 	//PID
-	_g_PIDTUNNING[COLD1].pid	= Drv_PidInit(PID_1,_g_ControlParameter.goal_temp_multiply100/100.0,KP_INIT0,KI_INIT0,KD_INIT0);
-	_g_PIDTUNNING[COLD2].pid	= Drv_PidInit(PID_2,_g_ControlParameter.goal_temp_multiply100/100.0,KP_INIT0,KI_INIT0,KD_INIT0);
-	_g_PIDTUNNING[COLD3].pid	= Drv_PidInit(PID_3,_g_ControlParameter.goal_temp_multiply100/100.0,KP_INIT0,KI_INIT0,KD_INIT0);
-	_g_PIDTUNNING[COLD4].pid	= Drv_PidInit(PID_4,_g_ControlParameter.goal_temp_multiply100/100.0,KP_INIT0,KI_INIT0,KD_INIT0);
+//	_g_PIDTUNNING[COLD1].pid	= Drv_PidInit(PID_1,(float)_g_ControlParameter.freezer_temp,KP_INIT0,KI_INIT0,KD_INIT0);
+//	_g_PIDTUNNING[COLD2].pid	= Drv_PidInit(PID_2,(float)_g_ControlParameter.freezer_temp,KP_INIT0,KI_INIT0,KD_INIT0);
+//	_g_PIDTUNNING[COLD3].pid	= Drv_PidInit(PID_3,(float)_g_ControlParameter.freezer_temp,KP_INIT0,KI_INIT0,KD_INIT0);
+//	_g_PIDTUNNING[COLD4].pid	= Drv_PidInit(PID_4,(float)_g_ControlParameter.freezer_temp,KP_INIT0,KI_INIT0,KD_INIT0);
 //	_g_PIDTUNNING[COLD_MAX+HEAT1].pid	= Drv_PidInit(PID_5,_g_ControlParameter.goal_temp_multiply100/100.0,KP_INIT0,KI_INIT0,KD_INIT0);
 //	_g_PIDTUNNING[COLD_MAX+HEAT2].pid	= Drv_PidInit(PID_6,_g_ControlParameter.goal_temp_multiply100/100.0,KP_INIT0,KI_INIT0,KD_INIT0);
-	for(i = 0;i<COLD_MAX;i++)
-	{
-		Drv_PidTuningParaInit(&_g_PIDTUNNING[i], _g_PIDTUNNING[i].pid, _gp_C[i], _Func_FreezerOFF, _Func_FreezerON); /*??????*/
-	}
+//	for(i = 0;i<COLD_MAX;i++)
+//	{
+//		Drv_PidTuningParaInit(&_g_PIDTUNNING[i], _g_PIDTUNNING[i].pid, _gp_C[i], _Func_FreezerOFF, _Func_FreezerON); /*??????*/
+//	}
 //	for(i=0;i<HEAT_MAX;i++)
 //	{
 //		Drv_PidTuningParaInit(&_g_PIDTUNNING[i+COLD_MAX], _g_PIDTUNNING[i+COLD_MAX].pid, _gp_H[i], _Func_HeaterON, _Func_HeaterOFF); /*??????*/
@@ -266,6 +275,53 @@ static bool Func_TempInit()
 //	free(p_err);
 	return true;
 }
+/* ??
+  ------------------------------
+  ???:true,??;false,??
+*/
+bool Func_Cmd_Com_Hello(void* p_buffer)
+{
+	uint8_t i;
+	COMMON_CMD_DATA* p_msg = (COMMON_CMD_DATA*)p_buffer;
+	HANDSHAKE_TYPE* p_data = (HANDSHAKE_TYPE*)p_msg->data;
+	COMMON_RETURN_DATA_TYPE* p_return = (COMMON_RETURN_DATA_TYPE*)malloc(sizeof(COMMON_RETURN_DATA_TYPE));
+	RETURN_ERR_DATA_TYPE* p_err = (RETURN_ERR_DATA_TYPE*)malloc(sizeof(RETURN_ERR_DATA_TYPE));
+	REPORT_EVENT_DATA1_TYPE* p_event = (REPORT_EVENT_DATA1_TYPE*)malloc(sizeof(REPORT_EVENT_DATA1_TYPE));
+	uint32_t frame_head = p_msg->frame_head;
+	uint16_t cmd = p_data->cmd;
+	uint8_t length = sizeof(COMMON_RETURN_DATA_TYPE);
+	freezer_goal_temp = p_data->temp;
+	_g_PIDTUNNING[COLD1].pid	= Drv_PidInit(PID_1,(float)p_data->temp,KP_INIT0,KI_INIT0,KD_INIT0);
+	_g_PIDTUNNING[COLD2].pid	= Drv_PidInit(PID_2,(float)p_data->temp,KP_INIT0,KI_INIT0,KD_INIT0);
+	_g_PIDTUNNING[COLD3].pid	= Drv_PidInit(PID_3,(float)p_data->temp,KP_INIT0,KI_INIT0,KD_INIT0);
+	_g_PIDTUNNING[COLD4].pid	= Drv_PidInit(PID_4,(float)p_data->temp,KP_INIT0,KI_INIT0,KD_INIT0);
+	for(i = 0;i<COLD_MAX;i++)
+	{
+		Drv_PidTuningParaInit(&_g_PIDTUNNING[i], _g_PIDTUNNING[i].pid, _gp_C[i], _Func_FreezerOFF, _Func_FreezerON); /*??????*/
+	}
+	p_return->cmd = p_data->cmd;
+	p_return->rsv[0] = 0;
+	p_return->rsv[1] = 0;
+  _Drv_UsartReturnDoneToBuffer(frame_head,cmd,length,(uint8_t *)p_return);
+	OSTimeDlyHMSM(0,0,0,200);
+	p_event->event_id = EVENT_INIT_SUCCESS;
+	p_event->meachine_status = 0;
+	p_event->rsv = 0;
+	if(BSP_ReadPin(_gp_S[0]->port_number,_gp_S[0]->pin_number) == 1)
+	{
+		p_err->err_code = ERR_LIQUID_INIT_ERR;
+		p_err->module_id = MODULE_LIQUID;
+		p_err->device_id = LIQUIDE_MAX;
+		_Drv_UsartReportErrToBuffer(0,0,sizeof(RETURN_ERR_DATA_TYPE),(uint8_t*)p_err);			//??????????
+	}
+	else{
+		_Drv_UsartReportEventToBuffer(0,0,sizeof(REPORT_EVENT_DATA_TYPE),(uint8_t*)p_event);	//???????
+	}
+	free(p_return);
+	free(p_event);
+	free(p_err);
+	return true;
+}
 
 /*ReportEventTask*/
 void Task1()
@@ -274,8 +330,6 @@ void Task1()
 	uint8_t err = OS_ERR_NONE;
 	REPORT_EVENT_DATA_TYPE* p_msg = (REPORT_EVENT_DATA_TYPE*)malloc(sizeof(REPORT_EVENT_DATA_TYPE));
 	RETURN_ERR_DATA_TYPE* p_err = (RETURN_ERR_DATA_TYPE*)malloc(sizeof(RETURN_ERR_DATA_TYPE));
-	static uint8_t event1=0;
-	static uint8_t event2= 0;
 	while(1)
 	{
 		OSTimeDlyHMSM(0,0,0,50);
@@ -389,8 +443,7 @@ void Task1()
 					p_err->device_id = i;
 					_Drv_UsartReportErrToBuffer(0,0,sizeof(RETURN_ERR_DATA_TYPE),(uint8_t*)p_err);
 					_g_ControlParameter.pid_switch = 0;
-					_g_ControlParameter.speed = COLD_MAX;
-					_Func_FreezerOFF();
+					_Func_AllFreezerOff();
 				}
 			}
 		}
@@ -405,7 +458,7 @@ void Task2()
 	{
 		OSTimeDlyHMSM(0,0,0,50);
 		Drv_NtcChaAndCalLoop();
-//		Cur_temp[0] = Drv_GetX100mTemp(_gp_X);
+		Cur_temp[0] = TEMP(Drv_GetX100mTemp(_gp_X));
 		for(i=0;i<TEMP_SENSOR_MAX;i++)
 		{	
 			Cur_temp[i+1] = Drv_GetNtcTemp(_gp_N[i]);
@@ -426,8 +479,8 @@ void Task2()
 //					}
 //					_Drv_UsartReportErrToBuffer(0,0,sizeof(RETURN_ERR_DATA_TYPE),(uint8_t*)p_err);
 ////					_g_ControlParameter.pid_switch = 0;
-//					_Func_FreezerOFF();
-//					_Func_HeaterOFF();
+//					_Func_AllFreezerOff();
+//					_Func_AllHeaterOff();
 //				}
 			}
 		}
@@ -438,8 +491,8 @@ void Task2()
 			p_err->device_id = TEMP_SENSOR6;
 			_Drv_UsartReportErrToBuffer(0,0,sizeof(RETURN_ERR_DATA_TYPE),(uint8_t *)p_err);
 //			_g_ControlParameter.pid_switch = 0;
-			_Func_FreezerOFF();
-			_Func_HeaterOFF();
+			_Func_AllFreezerOff();
+			_Func_AllHeaterOff();
 		}
 		if(Cur_temp[5] < 5.0 || Cur_temp[5] > 70.0)
 		{
@@ -448,8 +501,8 @@ void Task2()
 			p_err->device_id = TEMP_SENSOR5;
 			_Drv_UsartReportErrToBuffer(0,0,sizeof(RETURN_ERR_DATA_TYPE),(uint8_t *)p_err);
 //			_g_ControlParameter.pid_switch = 0;
-			_Func_FreezerOFF();
-			_Func_HeaterOFF();
+			_Func_AllFreezerOff();
+			_Func_AllHeaterOff();
 		}
 		if(Cur_temp[4] < 5.0 || Cur_temp[4] > 70.0)
 		{
@@ -458,19 +511,25 @@ void Task2()
 			p_err->device_id = TEMP_SENSOR4;
 			_Drv_UsartReportErrToBuffer(0,0,sizeof(RETURN_ERR_DATA_TYPE),(uint8_t *)p_err);
 //			_g_ControlParameter.pid_switch = 0;
-			_Func_FreezerOFF();
-			_Func_HeaterOFF();
+			_Func_AllFreezerOff();
+			_Func_AllHeaterOff();
 		}
 
 	}
 }
 void TaskResident1()
 {
+	PWM_Config(_gp_StepPump->motor->step_pin,1,1000);		//400pps (microstep)
 	while(1)
 	{
-		if(_g_Motor == 1)
+		if(_g_Motor == 1 && _gp_StepPump->motor->step_pin->status != PWM_BUSY)
 		{
-			MCC_Move_Distance(_gp_StepPump,!_gp_StepPump->reset_dir,3600,10000,MCC_MOVE_DISTANCE,0,MCC_LINE_SLOW);
+//			MCC_Move_Distance(_gp_StepPump,!_gp_StepPump->reset_dir,3600,10000,MCC_MOVE_DISTANCE,0,MCC_LINE_SLOW);
+			PWM_Enable(_gp_StepPump->motor->step_pin);
+		}
+		else
+		{
+			PWM_Disable(_gp_StepPump->motor->step_pin);
 		}
 		OSTimeDlyHMSM(0,0,0,10);
 		switch(_g_Liquid_Status)
@@ -517,21 +576,28 @@ void Task3()
 		OSTimeDlyHMSM(0, 0, 0, 50);
 		if(PumpIsStart(_gp_P[DCPUMP3]))   //freeze loop pump is open
 		{
-			if(_g_Motor == 1)
+			if(meachine_status != 2)
 			{
-				_g_pumpstarttime++;
+				if(_g_Motor == 1)
+				{
+					_g_pumpstarttime++;
+				}
+				else
+				{
+					_g_pumpstarttime = 0;
+					_g_ControlParameter.current_ch = 6;				/*default channel is colder liquid*/
+				}
+				if(_g_pumpstarttime>12000)
+				{	
+					meachine_status = 2;									
+					_g_ControlParameter.current_ch = 0;				/*goal temp switch to X100*/
+				}
 			}
-			else
-			{
-				_g_pumpstarttime = 0;
-				_g_ControlParameter.current_ch = 6;				/*default channel is colder liquid*/
-			}
-			if(_g_pumpstarttime>12000)
-				_g_ControlParameter.current_ch = 0;				/*goal temp switch to X100*/
 			if(_g_ControlParameter.pid_switch == 1)
 			{
 				if(_g_ControlParameter.mode == 0)
 				{
+					_Func_AllHeaterOff();
 					for(i = 0; i < _g_ControlParameter.speed; i++)
 					{ 
 						if(Drv_PidTuning(&_g_PIDTUNNING[i], Cur_temp[_g_ControlParameter.current_ch]) == END)
@@ -543,6 +609,7 @@ void Task3()
 				}
 				if(_g_ControlParameter.mode == 1)
 				{
+					_Func_AllFreezerOff();
 					if(_g_ControlParameter.goal_temp_multiply100/100 > Cur_temp[_g_ControlParameter.current_ch])
 					{
 						_Func_HeaterON();
@@ -575,9 +642,24 @@ void Task3()
 void Task4()
 {
 	uint8_t i = 0;
+	REPORT_EVENT_DATA1_TYPE* p_event = (REPORT_EVENT_DATA1_TYPE*)malloc(sizeof(REPORT_EVENT_DATA1_TYPE));
+	p_event->event_id = EVENT_INIT_SUCCESS;
 	while(1)
 	{
 		OSTimeDlyHMSM(0,0,0,100);
+		if(meachine_status == 0)
+		{
+			if(fabs(Cur_temp[6] - freezer_goal_temp) < 0.5)
+				pre_freezer_time++;
+			if(pre_freezer_time>=1800)
+			{
+				meachine_status = 1;
+				p_event->meachine_status = 1;   /**/
+				p_event->rsv = 0;
+				_Drv_UsartReportEventToBuffer(0,0,sizeof(REPORT_EVENT_DATA1_TYPE),(uint8_t*)p_event);
+				free(p_event);
+			}
+		}
 		if(_g_ControlParameter.pid_switch)
 		{
 			if(_g_ControlParameter.mode == 0)					//freezer
@@ -649,17 +731,49 @@ void Task6()
 	p_return->event_id = EVENT_TEMP_REPORT;
 	while(1)
 	{
-		OSTimeDlyHMSM(0,0,0,100);
+		OSTimeDlyHMSM(0,0,1,100);
 		if(_g_TempReport)
 		{
 			for(i=0;i<7;i++)
 			{
-				p_return->temp[i] = (uint32_t)Cur_temp[i]*100;
+				p_return->temp[i] = (uint32_t)(Cur_temp[i]*100);
 			}
 			p_return->rsv[0] = 0;
 			p_return->rsv[1] = 0;
 			_Drv_UsartReportEventToBuffer(0,0,sizeof(TEMP_REPORT_DATA_TYPE),(uint8_t*)p_return);
 		}
+	}
+}
+
+/*
+  -----------------------------------
+*/
+void TaskCmdScheduler2(void* p_arg)
+{
+	uint8_t err = OS_ERR_NONE;
+	MESSAGE_BOX* msg;
+	REPORT_EVENT_DATA_TYPE* p_repo = (REPORT_EVENT_DATA_TYPE*)malloc(sizeof(REPORT_EVENT_DATA_TYPE));
+	while (1)
+	{
+//		OSTimeDlyHMSM(0,0,1,0);
+		msg = OSMboxPend(_gp_Encoder->EncoderBox,0,&err);
+		if(msg->event_id == ENCODER_1)
+		{
+			if(msg->polarity == POLARITY_CW)
+				p_repo->event_id = EVENT_SS1_LEFT;
+			if(msg->polarity == POLARITY_CCW)
+				p_repo->event_id = EVENT_SS1_RIGHT;
+		}
+		if(msg->event_id == ENCODER_2)
+		{
+			if(msg->polarity == POLARITY_CW)
+				p_repo->event_id = EVENT_SS2_LEFT;
+			if(msg->polarity == POLARITY_CCW)
+				p_repo->event_id = EVENT_SS2_RIGHT;
+		}
+		p_repo->rsv[0] = 0;
+		p_repo->rsv[1] = 0;
+		_Drv_UsartReportEventToBuffer(0,0,sizeof(REPORT_EVENT_DATA_TYPE),(uint8_t*)p_repo);
 	}
 }
 
@@ -729,11 +843,11 @@ bool Func_X100_Para_RW(void* p_buffer)
 	
 	if(p_data->rw)
 	{
-		p_data->a = _g_X100.a;
-		p_data->b = _g_X100.b;
-		p_data->c = _g_X100.c;
-		p_data->d = _g_X100.d;
-		p_data->e = _g_X100.e;
+		p_data->a = _Func_Float2Int(_g_X100.a);
+		p_data->b = _Func_Float2Int(_g_X100.b);
+		p_data->c = _Func_Float2Int(_g_X100.c);
+		p_data->d = _Func_Float2Int(_g_X100.d);
+		p_data->e = _Func_Float2Int(_g_X100.e);
 //		p_data->a_int = _g_X100.;
 //		p_data->b_int = _g_X100_Para[1].x_int;
 //		p_data->c_int = _g_X100_Para[2].x_int;
@@ -758,11 +872,11 @@ bool Func_X100_Para_RW(void* p_buffer)
 	}
 	else
 	{
-		_g_X100.a = p_data->a;
-		_g_X100.b = p_data->b;
-		_g_X100.c = p_data->c;
-		_g_X100.d = p_data->d;
-		_g_X100.e = p_data->e;
+		_g_X100.a = _Func_Int2Float(p_data->a);
+		_g_X100.b = _Func_Int2Float(p_data->b);
+		_g_X100.c = _Func_Int2Float(p_data->c);
+		_g_X100.d = _Func_Int2Float(p_data->d);
+		_g_X100.e = _Func_Int2Float(p_data->e);
 		At24c32WritePage(_gp_E,20,(uint8_t*)(&_g_X100));
 //		_g_X100_Para[0].x_int = p_data->a_int;
 //		_g_X100_Para[1].x_int = p_data->b_int;
@@ -802,7 +916,6 @@ bool Func_X100_Para_RW(void* p_buffer)
 */
 bool Func_Temp_Para_RW(void* p_buffer)
 {
-	uint8_t i = 0;
 	COMMON_CMD_DATA* p_msg = (COMMON_CMD_DATA*)p_buffer;
 	CMD_TEMP_DATA* p_data = (CMD_TEMP_DATA*)p_msg->data;
 	COMMON_RETURN_DATA_TYPE* p_return = (COMMON_RETURN_DATA_TYPE*)malloc(sizeof(COMMON_RETURN_DATA_TYPE));
@@ -822,7 +935,7 @@ bool Func_Temp_Para_RW(void* p_buffer)
 		p_data->goal_ch = _g_ControlParameter.current_ch;
 		p_data->goal_temp_multiply100 = _g_ControlParameter.goal_temp_multiply100;
 		p_data->speed = _g_ControlParameter.speed;
-		
+	
 		_Drv_UsartReturnDoneToBuffer(frame_id,cmd,sizeof(CMD_TEMP_DATA),(uint8_t*)p_data);
 		free(p_err);
 		free(p_return);
@@ -835,16 +948,25 @@ bool Func_Temp_Para_RW(void* p_buffer)
 		_g_ControlParameter.pid_switch = p_data->pid_switch;
 		_g_ControlParameter.current_ch = p_data->goal_ch;
 		_g_ControlParameter.goal_temp_multiply100 = p_data->goal_temp_multiply100;
-		_g_ControlParameter.speed = p_data->speed;		
-		i = At24c32WritePage(_gp_E,1,(uint8_t*)(&_g_ControlParameter));
-
-		if(i != true)
+		_g_ControlParameter.speed = p_data->speed;	
+		_g_PIDTUNNING[COLD1].pid->setpoint = p_data->goal_temp_multiply100;
+		_g_PIDTUNNING[COLD2].pid->setpoint = p_data->goal_temp_multiply100;
+		_g_PIDTUNNING[COLD3].pid->setpoint = p_data->goal_temp_multiply100;
+		_g_PIDTUNNING[COLD4].pid->setpoint = p_data->goal_temp_multiply100;
+		if(p_data->pid_switch == 0)
 		{
-			_Drv_UsartReturnFailToBuffer(frame_id,cmd,sizeof(RETURN_ERR_DATA_TYPE),(uint8_t*)p_err);
-			free(p_err);
-			free(p_return);
-			return false;
+			_Func_AllHeaterOff();
+			_Func_AllFreezerOff();
 		}
+//		i = At24c32WritePage(_gp_E,1,(uint8_t*)(&_g_ControlParameter));
+
+//		if(i != true)
+//		{
+//			_Drv_UsartReturnFailToBuffer(frame_id,cmd,sizeof(RETURN_ERR_DATA_TYPE),(uint8_t*)p_err);
+//			free(p_err);
+//			free(p_return);
+//			return false;
+//		}
 		_Drv_UsartReturnDoneToBuffer(frame_id,cmd,sizeof(COMMON_RETURN_DATA_TYPE),(uint8_t*)p_return);
 		free(p_err);
 		free(p_return);
@@ -898,6 +1020,7 @@ bool Func_Liquid_Back(void* p_buffer)
 		PumpStop(_gp_P[DCPUMP1]);
 		PumpStart(_gp_P[DCPUMP2]);
 		Valve_Open(_gp_V);
+		_g_ControlParameter.pid_switch = 0;
 	}
 	p_return->cmd = p_data->cmd;
   _Drv_UsartReturnDoneToBuffer(frame_head,cmd,sizeof(COMMON_RETURN_DATA_TYPE),(uint8_t *)p_return);
@@ -988,7 +1111,7 @@ bool Func_Temp_Report_Switch(void* p_buffer)
 		_g_TempReport = 1;
 	else
 		_g_TempReport = 0;
-	_Drv_UsartReturnDoneToBuffer(frame_id,cmd,sizeof(COMMON_REP_DATA),(uint8_t*)p_return);
+	_Drv_UsartReturnDoneToBuffer(frame_id,cmd,sizeof(COMMON_RETURN_DATA_TYPE),(uint8_t*)p_return);
 	free(p_return);
 	return true;
 }
@@ -1044,6 +1167,14 @@ void _Func_FreezerOFF(void)
 		OSSemPost(_gp_FanOFF);
 	}
 }
+void _Func_AllFreezerOff(void)
+{
+	Drv_RefrigeratingClose(_gp_C[0]);
+	Drv_RefrigeratingClose(_gp_C[1]);
+	Drv_RefrigeratingClose(_gp_C[2]);
+	Drv_RefrigeratingClose(_gp_C[3]);
+	OSSemPost(_gp_FanOFF);
+}
 /*HeaterControl*/
 void _Func_HeaterON(void)
 {
@@ -1067,6 +1198,11 @@ void _Func_HeaterOFF(void)
 		Drv_HeatClose(_gp_H[i]);
 	}
 }
+void _Func_AllHeaterOff(void)
+{
+	Drv_HeatClose(_gp_H[0]);
+	Drv_HeatClose(_gp_H[1]);
+}
 /*?????1????*/
 /*?????1????*/
 void SofeTimer1CallBack(void *ptmr,void *p_arg)
@@ -1076,9 +1212,9 @@ void SofeTimer1CallBack(void *ptmr,void *p_arg)
 		if(_g_PIDTUNNING[COLD1].constatus == PID_CON)
 		{
 			if(_g_PIDTUNNING[COLD1].duty > _g_PIDTUNNING[COLD1].pertim)
-				_g_PIDTUNNING[COLD1].positivefun();
-			else
 				_g_PIDTUNNING[COLD1].negativefun();
+			else
+				_g_PIDTUNNING[COLD1].positivefun();
 			_g_PIDTUNNING[COLD1].pertim -= 10;
 			if(_g_PIDTUNNING[COLD1].pertim <= 0)
 			{
@@ -1111,9 +1247,9 @@ void SofeTimer2CallBack(void *ptmr,void *p_arg)
 		if(_g_PIDTUNNING[COLD2].constatus == PID_CON)
 		{
 			if(_g_PIDTUNNING[COLD2].duty > _g_PIDTUNNING[COLD2].pertim)
-				_g_PIDTUNNING[COLD2].positivefun();
-			else
 				_g_PIDTUNNING[COLD2].negativefun();
+			else
+				_g_PIDTUNNING[COLD2].positivefun();
 			_g_PIDTUNNING[COLD2].pertim -= 10;
 			if(_g_PIDTUNNING[COLD2].pertim <= 0)
 			{
@@ -1146,9 +1282,9 @@ void SofeTimer3CallBack(void *ptmr,void *p_arg)
 		if(_g_PIDTUNNING[COLD3].constatus == PID_CON)
 		{
 			if(_g_PIDTUNNING[COLD3].duty > _g_PIDTUNNING[COLD3].pertim)
-				_g_PIDTUNNING[COLD3].positivefun();
-			else
 				_g_PIDTUNNING[COLD3].negativefun();
+			else
+				_g_PIDTUNNING[COLD3].positivefun();
 			_g_PIDTUNNING[COLD3].pertim -= 10;
 			if(_g_PIDTUNNING[COLD3].pertim <= 0)
 			{
@@ -1165,9 +1301,9 @@ void SofeTimer4CallBack(void *ptmr,void *p_arg)
 		if(_g_PIDTUNNING[COLD4].constatus == PID_CON)
 		{
 			if(_g_PIDTUNNING[COLD4].duty > _g_PIDTUNNING[COLD4].pertim)
-				_g_PIDTUNNING[COLD4].positivefun();
-			else
 				_g_PIDTUNNING[COLD4].negativefun();
+			else
+				_g_PIDTUNNING[COLD4].positivefun();
 			_g_PIDTUNNING[COLD4].pertim -= 10;
 			if(_g_PIDTUNNING[COLD4].pertim <= 0)
 			{
@@ -1177,3 +1313,18 @@ void SofeTimer4CallBack(void *ptmr,void *p_arg)
 		}
 	}
 }
+
+float _Func_Int2Float(uint32_t data)
+{
+	PARA_CONVERT_UNION char2fl;
+	char2fl.ch4 = data;
+	return char2fl.fl;
+	
+}
+uint32_t _Func_Float2Int(float fl)
+{
+	PARA_CONVERT_UNION fl2char;
+	fl2char.fl = fl;
+	return fl2char.ch4;
+}
+

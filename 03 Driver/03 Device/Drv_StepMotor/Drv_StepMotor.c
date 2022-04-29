@@ -32,9 +32,9 @@ static DRV_STEPMOTOR_TYPE* _gp_MotorUnits[MOTOR_BUTT] = 			/*电机模块的注�
 
 static DRV_STEPMOTOR_LINE_TYPE _g_MotorLine[MOTOR_BUTT * 3] = 	/*电机加减速参数表*/
 {	/* 初速度(pps)、末速度(pps)、每台阶步数、加速台阶数、S曲线参数*100 */
-	{ 100, 10000, 3,  300,  5000},	//MOTOR_1低速参数
-	{ 100, 10000, 3,  300,  5000},	//MOTOR_1中速参数
-	{ 100, 10000, 3,  300,  5000},	//MOTOR_1高速参数
+	{ 100, 500, 3,  100,  5000},	//MOTOR_1低速参数
+	{ 100, 10000, 3,  100,  5000},	//MOTOR_1中速参数
+	{ 100, 10000, 3,  100,  5000},	//MOTOR_1高速参数
 	{ 100, 10000, 3,  300,  5000},	//MOTOR_2低速参数
 	{ 100, 10000, 3,  300,  5000},	//MOTOR_2中速参数
 	{ 100, 10000, 3,  300,  5000},	//MOTOR_2高速参数
@@ -115,71 +115,71 @@ DRV_STEPMOTOR_TYPE* Motor_Init(DRV_STEPMOTOR_ENUM id, uint8_t subdivision, \
 	/*公共的初始化*/	
 	
 	/*------------------------------------------常量*/
-	p_unit->id        = id;						/*模块编号*/
-	p_unit->en_port_number = en_port_number;	/*使用的EN引脚端口号*/
-	p_unit->en_pin_number = en_pin_number;		/*使用的EN引脚编号*/
-	BSP_Init_Pin(en_port_number,  en_pin_number,  _OUT_PP_);
-	p_unit->dir_port_number = dir_port_number;	/*使用的DIR引脚端口号*/
-	p_unit->dir_pin_number = dir_pin_number;	/*使用的DIR引脚编号*/
-	BSP_Init_Pin(dir_port_number, dir_pin_number, _OUT_PP_);		
-	
-	p_unit->line_high = &(_g_MotorLine[id * 3 + 2]);	/*高速运动参数表*/
-	p_unit->line_mid  = &(_g_MotorLine[id * 3 + 1]);	/*中速运动参数表*/
-	p_unit->line_low  = &(_g_MotorLine[id * 3]);		/*低速运动参数表*/
-	
-	p_unit->subdivision = subdivision;			/*电机细分数*/
-	
-	/*申请台阶-微步结构体组*/
-	if(p_unit->stLadStep_sp.ladder_step == NULL)
-	{
-		if(_CallocLadstep(&(p_unit->stLadStep_sp), 2) == NULL)		
-		{
-			free(p_unit);
-			return NULL;
-		}
-	}
-	if(p_unit->stLadStep_sd.ladder_step == NULL)
-	{
-		if(_CallocLadstep(&(p_unit->stLadStep_sd), 2) == NULL)
-		{
-			free(p_unit);
-			return NULL;
-		}
-	}
+//	p_unit->id        = id;						/*模块编号*/
+//	p_unit->en_port_number = en_port_number;	/*使用的EN引脚端口号*/
+//	p_unit->en_pin_number = en_pin_number;		/*使用的EN引脚编号*/
+//	BSP_Init_Pin(en_port_number,  en_pin_number,  _OUT_PP_);
+//	p_unit->dir_port_number = dir_port_number;	/*使用的DIR引脚端口号*/
+//	p_unit->dir_pin_number = dir_pin_number;	/*使用的DIR引脚编号*/
+//	BSP_Init_Pin(dir_port_number, dir_pin_number, _OUT_PP_);		
+//	
+////	p_unit->line_high = &(_g_MotorLine[id * 3 + 2]);	/*高速运动参数表*/
+////	p_unit->line_mid  = &(_g_MotorLine[id * 3 + 1]);	/*中速运动参数表*/
+//	p_unit->line_low  = &(_g_MotorLine[id * 3]);		/*低速运动参数表*/
+//	
+//	p_unit->subdivision = subdivision;			/*电机细分数*/
+//	
+//	/*申请台阶-微步结构体组*/
+//	if(p_unit->stLadStep_sp.ladder_step == NULL)
+//	{
+//		if(_CallocLadstep(&(p_unit->stLadStep_sp), 2) == NULL)		
+//		{
+//			free(p_unit);
+//			return NULL;
+//		}
+//	}
+//	if(p_unit->stLadStep_sd.ladder_step == NULL)
+//	{
+//		if(_CallocLadstep(&(p_unit->stLadStep_sd), 2) == NULL)
+//		{
+//			free(p_unit);
+//			return NULL;
+//		}
+//	}
 	
 	/*申请电机频率表内存*/
-	if(p_unit->line_hig_fre == NULL)
-	{
-		p_unit->line_hig_fre = _CallocMotorFre(p_unit->line_high->up_max_lader);
-		if(p_unit->line_hig_fre == NULL)		
-		{
-			free(p_unit);
-			return NULL;
-		}
-	}
-	p_unit->lineh_laderstep = malloc(sizeof(uint8_t)*p_unit->line_high->up_max_lader);
+//	if(p_unit->line_hig_fre == NULL)
+//	{
+//		p_unit->line_hig_fre = _CallocMotorFre(p_unit->line_high->up_max_lader);
+//		if(p_unit->line_hig_fre == NULL)		
+//		{
+//			free(p_unit);
+//			return NULL;
+//		}
+//	}
+//	p_unit->lineh_laderstep = malloc(sizeof(uint8_t)*p_unit->line_high->up_max_lader);
 //	CalcMotorFre(p_unit->subdivision, p_unit->line_high, p_unit->line_hig_fre);	/*高速运动频率表计算*/
-	if(p_unit->line_mid_fre == NULL)
-	{
-		p_unit->line_mid_fre = _CallocMotorFre(p_unit->line_mid->up_max_lader);
-		if(p_unit->line_mid_fre == NULL)		
-		{
-			free(p_unit);
-			return NULL;
-		}
-	}
-	p_unit->linem_laderstep = malloc(sizeof(uint8_t)*p_unit->line_mid->up_max_lader);
+//	if(p_unit->line_mid_fre == NULL)
+//	{
+//		p_unit->line_mid_fre = _CallocMotorFre(p_unit->line_mid->up_max_lader);
+//		if(p_unit->line_mid_fre == NULL)		
+//		{
+//			free(p_unit);
+//			return NULL;
+//		}
+//	}
+//	p_unit->linem_laderstep = malloc(sizeof(uint8_t)*p_unit->line_mid->up_max_lader);
 //	CalcMotorFre(p_unit->subdivision, p_unit->line_mid, p_unit->line_mid_fre);	/*中速运动频率表计算*/
-	if(p_unit->line_low_fre == NULL)
-	{
-		p_unit->line_low_fre = _CallocMotorFre(p_unit->line_low->up_max_lader);
-		if(p_unit->line_low_fre == NULL)
-		{
-			free(p_unit);
-			return NULL;
-		}
-	}
-	p_unit->linel_laderstep = malloc(sizeof(uint8_t)*p_unit->line_low->up_max_lader);
+//	if(p_unit->line_low_fre == NULL)
+//	{
+//		p_unit->line_low_fre = _CallocMotorFre(p_unit->line_low->up_max_lader);
+//		if(p_unit->line_low_fre == NULL)
+//		{
+//			free(p_unit);
+//			return NULL;
+//		}
+//	}
+//	p_unit->linel_laderstep = malloc(sizeof(uint8_t)*p_unit->line_low->up_max_lader);
 //	CalcMotorFre(p_unit->subdivision, p_unit->line_low, p_unit->line_low_fre);	/*低速运动频率表计算*/
 	/*------------------------------------------变常*/
 	p_unit->en_buffer       = 0;			/*当前使能状态*/

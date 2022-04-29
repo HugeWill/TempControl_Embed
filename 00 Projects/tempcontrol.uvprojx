@@ -189,7 +189,7 @@
             <hadIRAM2>0</hadIRAM2>
             <hadIROM2>0</hadIROM2>
             <StupSel>8</StupSel>
-            <useUlib>1</useUlib>
+            <useUlib>0</useUlib>
             <EndSel>0</EndSel>
             <uLtcg>0</uLtcg>
             <nSecure>0</nSecure>
@@ -339,7 +339,7 @@
               <MiscControls></MiscControls>
               <Define>STM32F10X_HD,USE_STDPERIPH_DRIVER,</Define>
               <Undefine></Undefine>
-              <IncludePath>..\01 FWlib\inc;..\02 uCOSii\Ports;..\02 uCOSii\Source;..\03 Driver\00 Config;..\03 Driver\01 Core;..\03 Driver\02 Bsp\BSP_Adc;..\03 Driver\02 Bsp\BSP_Can;..\03 Driver\02 Bsp\BSP_Gpio;..\03 Driver\02 Bsp\BSP_Spi;..\03 Driver\02 Bsp\BSP_Timer;..\03 Driver\02 Bsp\BSP_Sys;..\03 Driver\02 Bsp\BSP_Uart;..\03 Driver\03 Device\Drv_AT24C32;..\03 Driver\03 Device\Drv_Fan;..\03 Driver\03 Device\Drv_Heat;..\03 Driver\03 Device\Drv_Led;..\03 Driver\03 Device\Drv_MotionControlComponents;..\03 Driver\03 Device\Drv_Pid;..\03 Driver\03 Device\Drv_Pump;..\03 Driver\03 Device\Drv_PWM_TimerDriven;..\03 Driver\03 Device\Drv_Relay;..\03 Driver\03 Device\Drv_SimulateIic;..\03 Driver\03 Device\Drv_StepMotor;..\03 Driver\03 Device\Drv_SwitchingSensor;..\03 Driver\03 Device\Drv_Valve;..\05 Protocol\Prt_CmdDoubleList;..\05 Protocol\Prt_CmdRegedit;..\05 Protocol\Prt_CmdScheduler;..\06 Management;..\04 Function\00 Func_Common;..\04 Function\02 Func_LiquidControl;..\04 Function\01 Func_TempControl;..\03 Driver\03 Device\Drv_UartDataInterface;..\03 Driver\03 Device\Drv_Refrigerating;..\03 Driver\03 Device\Drv_NtcTemp;..\03 Driver\03 Device\Drv_X100m</IncludePath>
+              <IncludePath>..\01 FWlib\inc;..\02 uCOSii\Ports;..\02 uCOSii\Source;..\03 Driver\00 Config;..\03 Driver\01 Core;..\03 Driver\02 Bsp\BSP_Adc;..\03 Driver\02 Bsp\BSP_Can;..\03 Driver\02 Bsp\BSP_Gpio;..\03 Driver\02 Bsp\BSP_Spi;..\03 Driver\02 Bsp\BSP_Timer;..\03 Driver\02 Bsp\BSP_Sys;..\03 Driver\02 Bsp\BSP_Uart;..\03 Driver\03 Device\Drv_AT24C32;..\03 Driver\03 Device\Drv_Fan;..\03 Driver\03 Device\Drv_Heat;..\03 Driver\03 Device\Drv_Led;..\03 Driver\03 Device\Drv_MotionControlComponents;..\03 Driver\03 Device\Drv_Pid;..\03 Driver\03 Device\Drv_Pump;..\03 Driver\03 Device\Drv_PWM_TimerDriven;..\03 Driver\03 Device\Drv_Relay;..\03 Driver\03 Device\Drv_SimulateIic;..\03 Driver\03 Device\Drv_StepMotor;..\03 Driver\03 Device\Drv_SwitchingSensor;..\03 Driver\03 Device\Drv_Valve;..\05 Protocol\Prt_CmdDoubleList;..\05 Protocol\Prt_CmdRegedit;..\05 Protocol\Prt_CmdScheduler;..\06 Management;..\04 Function\00 Func_Common;..\04 Function\02 Func_LiquidControl;..\04 Function\01 Func_TempControl;..\03 Driver\03 Device\Drv_UartDataInterface;..\03 Driver\03 Device\Drv_Refrigerating;..\03 Driver\03 Device\Drv_NtcTemp;..\03 Driver\03 Device\Drv_X100m;..\03 Driver\03 Device\Drv_Encoder</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -772,6 +772,11 @@
               <FileName>Drv_X100m.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\03 Driver\03 Device\Drv_X100m\Drv_X100m.c</FilePath>
+            </File>
+            <File>
+              <FileName>Drv_Encoder.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\03 Driver\03 Device\Drv_Encoder\Drv_Encoder.c</FilePath>
             </File>
           </Files>
         </Group>

@@ -22,6 +22,7 @@
 #include "stm32f10x.h"
 #include "ucos_ii.h"
 #include "BSP_Gpio.h"
+#include "stdio.h"
 
 /*串口枚举*/
 typedef enum{

@@ -16,6 +16,31 @@
  
 #include "BSP_Uart.h"
 
+
+#if 1
+//#pragma import(__use_no_semihosting)             
+//±ê×¼¿âÐèÒªµÄÖ§³Öº¯Êý                 
+struct __FILE 
+{ 
+	int handle; 
+
+}; 
+
+FILE __stdout;       
+//¶¨Òå_sys_exit()ÒÔ±ÜÃâÊ¹ÓÃ°ëÖ÷»úÄ£Ê½    
+_sys_exit(int x) 
+{ 
+	x = x; 
+} 
+//ÖØ¶¨Òåfputcº¯Êý 
+int fputc(int ch, FILE *f)
+{      
+	while((USART1->SR&0X40)==0);//Ñ­»··¢ËÍ,Ö±µ½·¢ËÍÍê±Ï   
+    USART1->DR = (u8) ch;      
+	return ch;
+}
+#endif 
+
 /*串口中断函数注册表*/
 void(* BSP_UartIRQHandler[4])(void) = {0};	/*串口中断函数指针列表*/
 uint8_t receive_data[100];
@@ -202,7 +227,6 @@ bool BSP_Init_UsartInterrupt(BSP_USART_ENUM usart_number, uint32_t baud_rate, \
 			return false;
 	}
 	USART_DMACmd(USART1,USART_DMAReq_Rx,ENABLE);
-	USART_Cmd(USART1,ENABLE);
 	DMA_Buffer_Init();
 	return true;
 }
@@ -217,12 +241,13 @@ bool BSP_Init_UsartInterrupt(BSP_USART_ENUM usart_number, uint32_t baud_rate, \
 */
 bool BSP_UsartSendByte(BSP_USART_ENUM usart_number, uint8_t data)
 {
-	
+	OS_CPU_SR  cpu_sr;
+	OS_ENTER_CRITICAL();
 	switch(usart_number)
 	{
 		case _USART1_: 
 			USART_SendData(USART1, data); 			/*发送数据*/
-			while (USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET);
+			while (USART_GetFlagStatus(USART1, USART_FLAG_TC) == RESET);
 			break;
 		case _USART2_:
 			USART_SendData(USART2, data); 			/*发送数据*/
@@ -243,7 +268,7 @@ bool BSP_UsartSendByte(BSP_USART_ENUM usart_number, uint8_t data)
 		default: 
 			return false;
 	}
-	
+	OS_EXIT_CRITICAL();
 	return true;
 }
 
@@ -307,12 +332,6 @@ void USART2_IRQHandler(void)
 */
 void USART3_IRQHandler(void)
 {
-	if(USART_GetFlagStatus(USART3, USART_FLAG_ORE) != RESET)
-	{
-		USART_ReceiveData(USART3);
-		USART_ClearFlag(USART3, USART_FLAG_ORE); 
-	}
-	
  if(USART_GetITStatus(USART3, USART_IT_RXNE)!=RESET)
  {	   
 	USART_ClearFlag(USART3, USART_FLAG_RXNE); 
@@ -326,6 +345,11 @@ void USART3_IRQHandler(void)
 		USART_ReceiveData(USART3);
 	}
  }
+	if(USART_GetFlagStatus(USART3, USART_FLAG_ORE) != RESET)
+	{
+		USART_ReceiveData(USART3);
+		USART_ClearFlag(USART3, USART_FLAG_ORE); 
+	}
 }
 
 /* 串口4中断

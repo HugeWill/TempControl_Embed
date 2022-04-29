@@ -37,46 +37,6 @@ void Func_Common_Init(DList* dlist)
 }
 
 
-
-/* 握手
-  ------------------------------
-  返回值：true，成功；false，失败
-*/
-bool Func_Cmd_Com_Hello(void* p_buffer)
-{
-	COMMON_CMD_DATA* p_msg = (COMMON_CMD_DATA*)p_buffer;
-	HANDSHAKE_TYPE* p_data = (HANDSHAKE_TYPE*)p_msg->data;
-	COMMON_RETURN_DATA_TYPE* p_return = (COMMON_RETURN_DATA_TYPE*)malloc(sizeof(COMMON_RETURN_DATA_TYPE));
-	RETURN_ERR_DATA_TYPE* p_err = (RETURN_ERR_DATA_TYPE*)malloc(sizeof(RETURN_ERR_DATA_TYPE));
-	REPORT_EVENT_DATA_TYPE* p_event = (REPORT_EVENT_DATA_TYPE*)malloc(sizeof(REPORT_EVENT_DATA_TYPE));
-	uint32_t frame_head = p_msg->frame_head;
-	uint16_t cmd = p_data->cmd;
-	uint8_t length = sizeof(COMMON_RETURN_DATA_TYPE);
-	
-	p_return->cmd = p_data->cmd;
-	p_return->rsv[0] = 0;
-	p_return->rsv[1] = 0;
-  _Drv_UsartReturnDoneToBuffer(frame_head,cmd,length,(uint8_t *)p_return);
-	OSTimeDlyHMSM(0,0,0,10);
-	p_event->event_id = EVENT_INIT_SUCCESS;
-	p_event->rsv[0] = 0;
-	p_event->rsv[1] = 0;
-	if(BSP_ReadPin(_gp_S[0]->port_number,_gp_S[0]->pin_number) == 1 || BSP_ReadPin(_gp_S[1]->port_number,_gp_S[1]->pin_number) == 1)
-	{
-		p_err->err_code = ERR_LIQUID_INIT_ERR;
-		p_err->module_id = MODULE_LIQUID;
-		p_err->device_id = LIQUIDE_MAX;
-		_Drv_UsartReportErrToBuffer(0,0,sizeof(RETURN_ERR_DATA_TYPE),(uint8_t*)p_err);			//都是低液位初始化失败
-	}
-	else{
-		_Drv_UsartReportEventToBuffer(0,0,sizeof(REPORT_EVENT_DATA_TYPE),(uint8_t*)p_event);	//否则初始化成功
-	}
-	free(p_return);
-	free(p_event);
-	free(p_err);
-	return true;
-}
-
 /* 泵/直流电机控制
   ------------------------------
   返回值：true，成功；false，失败

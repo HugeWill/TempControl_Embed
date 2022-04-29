@@ -261,7 +261,9 @@ void _Drv_UsartCmdFifoForward(void)
 */
 void _Drv_UartTxFifoForward(void)
 {
+	OS_CPU_SR  cpu_sr;
 	uint8_t i = 0;
+	OS_ENTER_CRITICAL();
 	for(i=1;i<MAX_CMD_BUFFER;i++)
 	{
 		memcpy(&Usart_Tx_Buffer[i-1][0],&Usart_Rx_Buffer[i][0],USART_RX_MAX_NUMBER);
@@ -269,7 +271,7 @@ void _Drv_UartTxFifoForward(void)
 	memset(&Usart_Tx_Buffer[4][0],0,USART_RX_MAX_NUMBER);
 	if(Usart_Tx_Buffer[0][5] == 0)
 		_gp_usart1->tx_status = USART_TX_IDLE;				//队列缓存区全部清空
-
+	OS_EXIT_CRITICAL();
 }
 
 /* 发送缓存区数据发送
@@ -277,12 +279,16 @@ void _Drv_UartTxFifoForward(void)
 */
 void Drv_UartSendDatas(uint8_t p_buffer[])
 {
+	OS_CPU_SR  cpu_sr;
 	uint8_t length = p_buffer[5] + 8;   //获取数据包长度
 	uint8_t i = 0;
+	OS_ENTER_CRITICAL();
 	for(i=0;i<length;i++)
 	{
+//		printf("%x",(uint8_t)p_buffer[i]);
 		BSP_UsartSendByte(_gp_usart1->usart_number,p_buffer[i]);
 	}
+	OS_EXIT_CRITICAL();
 //	BSP_UsartSendByte(_gp_usart1->usart_number,0x0d);
 //	BSP_UsartSendByte(_gp_usart1->usart_number,0x0a);
 	memset(p_buffer,0,length);
@@ -297,6 +303,7 @@ void Drv_UartSendDatas(uint8_t p_buffer[])
 */
 void _Drv_UsartReturnDoneToBuffer(uint32_t frame_head, uint16_t cmd, uint8_t length, uint8_t* datas)
 {
+	OS_CPU_SR  cpu_sr;
 	uint8_t i = 0;
 	COMMON_REP_DATA* p_msg = NULL;
 	p_msg = (COMMON_REP_DATA*)malloc(sizeof(COMMON_REP_DATA) + length);
@@ -310,7 +317,7 @@ void _Drv_UsartReturnDoneToBuffer(uint32_t frame_head, uint16_t cmd, uint8_t len
 	p_msg->length = length;
 	p_msg->cmd = cmd;
 	memcpy(p_msg->data,datas,length);
-
+	OS_ENTER_CRITICAL();
 	for(i=0;i<MAX_CMD_BUFFER;i++)
 	{
 		if(Usart_Tx_Buffer[i][5] == 0)
@@ -319,6 +326,7 @@ void _Drv_UsartReturnDoneToBuffer(uint32_t frame_head, uint16_t cmd, uint8_t len
 			break;
 		}
 	}
+	OS_EXIT_CRITICAL();
 	if(5 == i&& Usart_Tx_Buffer[4][5] == 0)
 	{
 		free(p_msg);
@@ -338,6 +346,7 @@ void _Drv_UsartReturnDoneToBuffer(uint32_t frame_head, uint16_t cmd, uint8_t len
 */
 void _Drv_UsartReturnFailToBuffer(uint32_t frame_head, uint16_t cmd, uint8_t length, uint8_t* datas)
 {
+	OS_CPU_SR  cpu_sr;
 	uint8_t i = 0;
 	COMMON_REP_DATA* p_msg = NULL;
 	p_msg = (COMMON_REP_DATA*)malloc(sizeof(COMMON_REP_DATA) + length);
@@ -351,7 +360,7 @@ void _Drv_UsartReturnFailToBuffer(uint32_t frame_head, uint16_t cmd, uint8_t len
 	p_msg->length = length;
 	p_msg->cmd = cmd;
 	memcpy(p_msg->data,datas,length);
-
+	OS_ENTER_CRITICAL();
 	for(i=0;i<MAX_CMD_BUFFER;i++)
 	{
 		if(Usart_Tx_Buffer[i][5] == 0)
@@ -360,6 +369,7 @@ void _Drv_UsartReturnFailToBuffer(uint32_t frame_head, uint16_t cmd, uint8_t len
 			break;
 		}
 	}
+	OS_EXIT_CRITICAL();
 	if(5 == i&& Usart_Tx_Buffer[4][5] == 0)
 	{
 		free(p_msg);
@@ -379,6 +389,7 @@ void _Drv_UsartReturnFailToBuffer(uint32_t frame_head, uint16_t cmd, uint8_t len
 */
 void _Drv_UsartReturnOnlyErrToBuffer(uint32_t frame_head,uint16_t cmd, uint16_t err_code)
 {
+	OS_CPU_SR  cpu_sr;
 	uint8_t i = 0;
 	COMMON_REP_DATA* p_msg = NULL;
 	p_msg = (COMMON_REP_DATA*)malloc(sizeof(COMMON_REP_DATA) + 4);
@@ -395,6 +406,7 @@ void _Drv_UsartReturnOnlyErrToBuffer(uint32_t frame_head,uint16_t cmd, uint16_t 
 	p_msg->data[1] = (err_code>>8)&0xff;
 	p_msg->data[2] = 0;
 	p_msg->data[3] = 0;
+	OS_ENTER_CRITICAL();
 	for(i=0;i<MAX_CMD_BUFFER;i++)
 	{
 		if(Usart_Tx_Buffer[i][5] == 0)
@@ -403,6 +415,7 @@ void _Drv_UsartReturnOnlyErrToBuffer(uint32_t frame_head,uint16_t cmd, uint16_t 
 			break;
 		}
 	}
+	OS_EXIT_CRITICAL();
 	if(5 == i&& Usart_Tx_Buffer[4][5] == 0)
 	{
 		free(p_msg);
@@ -421,6 +434,7 @@ void _Drv_UsartReturnOnlyErrToBuffer(uint32_t frame_head,uint16_t cmd, uint16_t 
 */
 void _Drv_UsartReportErrToBuffer(uint32_t frame_head, uint16_t err_code, uint8_t length, uint8_t* datas)
 {
+	OS_CPU_SR  cpu_sr;
 	uint8_t i = 0;
 	COMMON_REP_DATA* p_msg = NULL;
 	p_msg = (COMMON_REP_DATA*)malloc(sizeof(COMMON_REP_DATA) + length);
@@ -434,7 +448,7 @@ void _Drv_UsartReportErrToBuffer(uint32_t frame_head, uint16_t err_code, uint8_t
 	p_msg->length = length;
 	p_msg->cmd = 0;
 	memcpy(p_msg->data,datas,length);
-
+	OS_ENTER_CRITICAL();
 	for(i=0;i<MAX_CMD_BUFFER;i++)
 	{
 		if(Usart_Tx_Buffer[i][5] == 0)
@@ -443,6 +457,7 @@ void _Drv_UsartReportErrToBuffer(uint32_t frame_head, uint16_t err_code, uint8_t
 			break;
 		}
 	}
+	OS_EXIT_CRITICAL();
 	if(5 == i&& Usart_Tx_Buffer[4][5] == 0)
 	{
 		free(p_msg);
@@ -456,6 +471,7 @@ void _Drv_UsartReportErrToBuffer(uint32_t frame_head, uint16_t err_code, uint8_t
 
 void _Drv_UsartReportEventToBuffer(uint32_t frame_head, uint16_t cmd, uint8_t length, uint8_t* datas)
 {
+	OS_CPU_SR  cpu_sr;
 	uint8_t i = 0;
 	COMMON_REP_DATA* p_msg = NULL;
 	p_msg = (COMMON_REP_DATA*)malloc(sizeof(COMMON_REP_DATA)+length);
@@ -469,7 +485,7 @@ void _Drv_UsartReportEventToBuffer(uint32_t frame_head, uint16_t cmd, uint8_t le
 	p_msg->length = length;
 	p_msg->cmd = 0;
 	memcpy(p_msg->data,datas,length);
-
+	OS_ENTER_CRITICAL();
 	for(i=0;i<MAX_CMD_BUFFER;i++)
 	{
 		if(Usart_Tx_Buffer[i][5] == 0)
@@ -478,6 +494,7 @@ void _Drv_UsartReportEventToBuffer(uint32_t frame_head, uint16_t cmd, uint8_t le
 			break;
 		}
 	}
+	OS_EXIT_CRITICAL();
 	if(5 == i&& Usart_Tx_Buffer[4][5] == 0)
 	{
 		free(p_msg);
