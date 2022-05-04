@@ -206,12 +206,7 @@ typedef struct{
 //蠕动泵控制指令结构体
 typedef struct{
     uint16_t cmd;               //命令字
-    uint16_t speed_start;             //速度pps
-		uint16_t speed_end;
-		uint16_t echlader_up;
-		uint16_t lader;
-		uint16_t s_para;
-    uint32_t volumn;            //吸样体积(0.1ul)
+		uint16_t speed;							//pps
 } STEPPUMPCONTROL_TYPE;
 //阀控制指令结构体
 typedef struct{

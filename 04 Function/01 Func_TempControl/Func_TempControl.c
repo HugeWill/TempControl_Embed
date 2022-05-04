@@ -46,6 +46,7 @@ OS_EVENT* _gp_PIDTUNNINGFINISH;
 OS_EVENT* _gp_ColdStart;
 OS_EVENT*	_gp_FanOFF;
 volatile uint8_t _g_Motor = 0;				//0:close ,1:open
+uint16_t _g_MotorSpeed = 0;						//pps
 static uint32_t _g_pumpstarttime = 0;
 volatile uint8_t _g_TempReport = 0;		//0:close ,1:open
 static uint8_t meachine_status = 0;		
@@ -519,12 +520,11 @@ void Task2()
 }
 void TaskResident1()
 {
-	PWM_Config(_gp_StepPump->motor->step_pin,1,1000);		//400pps (microstep)
+	PWM_Config(_gp_StepPump->motor->step_pin,1,1000);		//400pps (microstep) default
 	while(1)
 	{
 		if(_g_Motor == 1 && _gp_StepPump->motor->step_pin->status != PWM_BUSY)
 		{
-//			MCC_Move_Distance(_gp_StepPump,!_gp_StepPump->reset_dir,3600,10000,MCC_MOVE_DISTANCE,0,MCC_LINE_SLOW);
 			PWM_Enable(_gp_StepPump->motor->step_pin);
 		}
 		else
@@ -578,7 +578,7 @@ void Task3()
 		{
 			if(meachine_status != 2)
 			{
-				if(_g_Motor == 1)
+				if(_g_Motor == 1 && meachine_status != 2)
 				{
 					_g_pumpstarttime++;
 				}
@@ -591,6 +591,17 @@ void Task3()
 				{	
 					meachine_status = 2;									
 					_g_ControlParameter.current_ch = 0;				/*goal temp switch to X100*/
+					if(_g_ControlParameter.goal_temp_multiply100 < 3000)
+					{
+						_g_PIDTUNNING[COLD1].pid->setpoint = 33.0;
+						_g_PIDTUNNING[COLD2].pid->setpoint = 33.0;
+						_g_PIDTUNNING[COLD3].pid->setpoint = 33.0;
+						_g_PIDTUNNING[COLD4].pid->setpoint = 33.0;
+					}
+					Drv_PidReset(_g_PIDTUNNING[COLD1].pid);
+					Drv_PidReset(_g_PIDTUNNING[COLD2].pid);
+					Drv_PidReset(_g_PIDTUNNING[COLD3].pid);
+					Drv_PidReset(_g_PIDTUNNING[COLD4].pid);
 				}
 			}
 			if(_g_ControlParameter.pid_switch == 1)
@@ -787,41 +798,13 @@ bool Func_Cmd_Com_StepPump_Control(void* p_buffer)
 	COMMON_CMD_DATA* p_msg = (COMMON_CMD_DATA*)p_buffer;
 	STEPPUMPCONTROL_TYPE* p_data = (STEPPUMPCONTROL_TYPE*)p_msg->data;
 	COMMON_RETURN_DATA_TYPE* p_return = (COMMON_RETURN_DATA_TYPE*)malloc(sizeof(COMMON_RETURN_DATA_TYPE));
-	RETURN_ERR_DATA_TYPE* p_err = (RETURN_ERR_DATA_TYPE*)malloc(sizeof(RETURN_ERR_DATA_TYPE));
-	
+
 	uint32_t frame_id = p_msg->frame_head;
 	uint16_t cmd = p_data->cmd;
 	p_return->cmd = cmd;
-	p_err->err_code = ERR_CMD_FAIL;
-	p_err->module_id = MODULE_STEPPUMP;
-	p_err->device_id = STEP_PUMP1;
-	_g_Motor_Curve.start_fre = p_data->speed_start;
-	_g_Motor_Curve.end_fre = p_data->speed_end;
-	_g_Motor_Curve.each_lader_step = p_data->echlader_up;
-	_g_Motor_Curve.lader_num = p_data->lader;
-	_g_Motor_Curve.s_para = p_data->s_para;
-	At24c32WritePage(_gp_E,10,(uint8_t*)(&_g_Motor_Curve));
-	MCC_SetStempMotorLine5(_gp_StepPump,_g_Motor_Curve.start_fre,_g_Motor_Curve.end_fre,\
-												_g_Motor_Curve.each_lader_step,_g_Motor_Curve.lader_num,\
-												_g_Motor_Curve.s_para,0);
-	MCC_SetStempMotorLine5(_gp_StepPump,_g_Motor_Curve.start_fre,_g_Motor_Curve.end_fre,\
-												_g_Motor_Curve.each_lader_step,_g_Motor_Curve.lader_num,\
-												_g_Motor_Curve.s_para,1);
-	if(p_data->volumn>0&&p_data->volumn<0xFFFFFFFF)
-		i = MCC_Move_Coordinates(_gp_StepPump,p_data->volumn/100.0,99000,MCC_MOVE_DISTANCE,0,MCC_LINE_SLOW);
-	if(p_data->volumn == 0xFFFFFFFF)
-		_g_Motor = 1;
-	if(p_data->volumn == 0)
-		_g_Motor = 0;
-	if(i != OS_ERR_NONE)
-	{
-		_Drv_UsartReturnFailToBuffer(frame_id,cmd,sizeof(RETURN_ERR_DATA_TYPE),(uint8_t*)p_err);
-		free(p_err);
-		free(p_return);
-		return false;
-	}
+	_g_MotorSpeed = p_data->speed;
+	PWM_Config(_gp_StepPump->motor->step_pin,1,8000000/(2*_g_MotorSpeed*16));		//400pps (microstep) 16microsteps
 	_Drv_UsartReturnDoneToBuffer(frame_id,cmd,sizeof(COMMON_RETURN_DATA_TYPE),(uint8_t*)p_return);
-	free(p_err);
 	free(p_return);
 	return true;
 
@@ -848,24 +831,6 @@ bool Func_X100_Para_RW(void* p_buffer)
 		p_data->c = _Func_Float2Int(_g_X100.c);
 		p_data->d = _Func_Float2Int(_g_X100.d);
 		p_data->e = _Func_Float2Int(_g_X100.e);
-//		p_data->a_int = _g_X100.;
-//		p_data->b_int = _g_X100_Para[1].x_int;
-//		p_data->c_int = _g_X100_Para[2].x_int;
-//		p_data->d_int = _g_X100_Para[3].x_int;
-//		p_data->e_int = _g_X100_Para[4].x_int;
-//		
-//		p_data->a_index = _g_X100_Para[0].x_index;
-//		p_data->b_index = _g_X100_Para[1].x_index;
-//		p_data->c_index = _g_X100_Para[2].x_index;
-//		p_data->d_index = _g_X100_Para[3].x_index;
-//		p_data->e_index = _g_X100_Para[4].x_index;
-//		
-//		p_data->a_frac = _g_X100_Para[0].x_frac;
-//		p_data->b_frac = _g_X100_Para[1].x_frac;
-//		p_data->c_frac = _g_X100_Para[2].x_frac;
-//		p_data->d_frac = _g_X100_Para[3].x_frac;
-//		p_data->e_frac = _g_X100_Para[4].x_frac;
-		
 		_Drv_UsartReturnDoneToBuffer(frame_id,cmd,sizeof(FIBERX100_PARA_RW),(uint8_t*)p_data);
 		free(p_return);
 		return true;
@@ -877,35 +842,19 @@ bool Func_X100_Para_RW(void* p_buffer)
 		_g_X100.c = _Func_Int2Float(p_data->c);
 		_g_X100.d = _Func_Int2Float(p_data->d);
 		_g_X100.e = _Func_Int2Float(p_data->e);
+		_gp_X->temp_para.a = _g_X100.a;
+		_gp_X->temp_para.b = _g_X100.b;
+		_gp_X->temp_para.c = _g_X100.c;
+		_gp_X->temp_para.d = _g_X100.d;
+		_gp_X->temp_para.e = _g_X100.e;
 		At24c32WritePage(_gp_E,20,(uint8_t*)(&_g_X100));
-//		_g_X100_Para[0].x_int = p_data->a_int;
-//		_g_X100_Para[1].x_int = p_data->b_int;
-//		_g_X100_Para[2].x_int = p_data->c_int;
-//		_g_X100_Para[3].x_int = p_data->d_int;
-//		_g_X100_Para[4].x_int = p_data->e_int;
-//		
-//		_g_X100_Para[0].x_index = p_data->a_index;
-//		_g_X100_Para[1].x_index = p_data->b_index;
-//		_g_X100_Para[2].x_index = p_data->c_index;
-//		_g_X100_Para[3].x_index = p_data->d_index;
-//		_g_X100_Para[4].x_index = p_data->e_index;
-//		
-//		_g_X100_Para[0].x_frac = p_data->a_frac;
-//		_g_X100_Para[1].x_frac = p_data->b_frac;
-//		_g_X100_Para[2].x_frac = p_data->c_frac;
-//		_g_X100_Para[3].x_frac = p_data->d_frac;
-//		_g_X100_Para[4].x_frac = p_data->e_frac;
-//		
-//		for(i=0;i<5;i++)
-//		{
-//			At24c32WritePage(_gp_E,20+i,(uint8_t*)(&_g_X100_Para[i]));
-//		}
+		
 	}
 
 	_Drv_UsartReturnDoneToBuffer(frame_id,cmd,sizeof(COMMON_RETURN_DATA_TYPE),(uint8_t*)p_return);
 	free(p_return);
-	OSTimeDlyHMSM(0,0,0,50);			//wait for response to uppermachine
-	BSP_Reboot();
+//	OSTimeDlyHMSM(0,0,0,50);			//wait for response to uppermachine
+//	BSP_Reboot();
 	return true;
 
 }
@@ -953,6 +902,10 @@ bool Func_Temp_Para_RW(void* p_buffer)
 		_g_PIDTUNNING[COLD2].pid->setpoint = p_data->goal_temp_multiply100;
 		_g_PIDTUNNING[COLD3].pid->setpoint = p_data->goal_temp_multiply100;
 		_g_PIDTUNNING[COLD4].pid->setpoint = p_data->goal_temp_multiply100;
+		Drv_PidReset(_g_PIDTUNNING[COLD1].pid);
+		Drv_PidReset(_g_PIDTUNNING[COLD2].pid);
+		Drv_PidReset(_g_PIDTUNNING[COLD3].pid);
+		Drv_PidReset(_g_PIDTUNNING[COLD4].pid);
 		if(p_data->pid_switch == 0)
 		{
 			_Func_AllHeaterOff();
@@ -1132,7 +1085,7 @@ bool Func_Freezer_Current_Inquiry(void* p_buffer)
 	Drv_RefChaAndCalLoop();
 	for(i=0;i<COLD_MAX;i++)
 	{
-		p_return->current[i] = (uint16_t)_gp_C[i]->Ic*100;
+		p_return->current[i] = (uint16_t)(_gp_C[i]->Ic*100);
 	}
 	p_return->rsv[0] = 0;
 	p_return->rsv[1] = 0;
@@ -1212,9 +1165,9 @@ void SofeTimer1CallBack(void *ptmr,void *p_arg)
 		if(_g_PIDTUNNING[COLD1].constatus == PID_CON)
 		{
 			if(_g_PIDTUNNING[COLD1].duty > _g_PIDTUNNING[COLD1].pertim)
-				_g_PIDTUNNING[COLD1].negativefun();
-			else
 				_g_PIDTUNNING[COLD1].positivefun();
+			else
+				_g_PIDTUNNING[COLD1].negativefun();
 			_g_PIDTUNNING[COLD1].pertim -= 10;
 			if(_g_PIDTUNNING[COLD1].pertim <= 0)
 			{
@@ -1247,9 +1200,9 @@ void SofeTimer2CallBack(void *ptmr,void *p_arg)
 		if(_g_PIDTUNNING[COLD2].constatus == PID_CON)
 		{
 			if(_g_PIDTUNNING[COLD2].duty > _g_PIDTUNNING[COLD2].pertim)
-				_g_PIDTUNNING[COLD2].negativefun();
-			else
 				_g_PIDTUNNING[COLD2].positivefun();
+			else
+				_g_PIDTUNNING[COLD2].negativefun();
 			_g_PIDTUNNING[COLD2].pertim -= 10;
 			if(_g_PIDTUNNING[COLD2].pertim <= 0)
 			{
@@ -1282,9 +1235,9 @@ void SofeTimer3CallBack(void *ptmr,void *p_arg)
 		if(_g_PIDTUNNING[COLD3].constatus == PID_CON)
 		{
 			if(_g_PIDTUNNING[COLD3].duty > _g_PIDTUNNING[COLD3].pertim)
-				_g_PIDTUNNING[COLD3].negativefun();
-			else
 				_g_PIDTUNNING[COLD3].positivefun();
+			else
+				_g_PIDTUNNING[COLD3].negativefun();
 			_g_PIDTUNNING[COLD3].pertim -= 10;
 			if(_g_PIDTUNNING[COLD3].pertim <= 0)
 			{
@@ -1301,9 +1254,9 @@ void SofeTimer4CallBack(void *ptmr,void *p_arg)
 		if(_g_PIDTUNNING[COLD4].constatus == PID_CON)
 		{
 			if(_g_PIDTUNNING[COLD4].duty > _g_PIDTUNNING[COLD4].pertim)
-				_g_PIDTUNNING[COLD4].negativefun();
-			else
 				_g_PIDTUNNING[COLD4].positivefun();
+			else
+				_g_PIDTUNNING[COLD4].negativefun();
 			_g_PIDTUNNING[COLD4].pertim -= 10;
 			if(_g_PIDTUNNING[COLD4].pertim <= 0)
 			{
@@ -1317,14 +1270,19 @@ void SofeTimer4CallBack(void *ptmr,void *p_arg)
 float _Func_Int2Float(uint32_t data)
 {
 	PARA_CONVERT_UNION char2fl;
-	char2fl.ch4 = data;
+	char2fl.ch[0] = data>>24&0xff;
+	char2fl.ch[1] = data>>16&0xff;
+	char2fl.ch[2] = data>>8&0xff;
+	char2fl.ch[3] = data&0xff;
 	return char2fl.fl;
 	
 }
 uint32_t _Func_Float2Int(float fl)
 {
 	PARA_CONVERT_UNION fl2char;
+	uint32_t ch4;
 	fl2char.fl = fl;
-	return fl2char.ch4;
+	ch4 = fl2char.ch[0]<<24&fl2char.ch[1]<<16&fl2char.ch[2]<<8&fl2char.ch[3];
+	return ch4;
 }
 

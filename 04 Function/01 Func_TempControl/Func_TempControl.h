@@ -68,7 +68,7 @@ typedef enum{
 }LIQUID_SENSOR_ENUM;
 
 typedef union{
-	uint32_t ch4;
+	uint8_t ch[4];
 	float fl;
 } PARA_CONVERT_UNION;
 /* 初始化模块
