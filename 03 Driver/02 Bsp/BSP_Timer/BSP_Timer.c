@@ -15,7 +15,10 @@
  ********************************************************/
  
 #include "BSP_Timer.h"
-
+#define _IS_GENERAL_TIMER(TIMER) ((TIMER == _T2_) || \
+									(TIMER == _T3_) || \
+									(TIMER == _T4_) || \
+									(TIMER == _T5_))
 /*定时器中断函数注册表*/
 void(* BSP_TimerIRQHandler[6])(void) = {0};	/*定时器中断函数指针列表*/
 
@@ -31,55 +34,88 @@ bool BSP_Init_TimerInterrupt(BSP_TIMER_ENUM timer_number, uint16_t period, uint1
 {
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure = {0};
     NVIC_InitTypeDef NVIC_InitStructure = {0};
-	
-	/*使能定时器时钟*/
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2 << timer_number, ENABLE);	
-	
-	/*初始化TIM中断优先级*/
-	switch(timer_number)
-	{
-		case _T2_:
-			NVIC_InitStructure.NVIC_IRQChannel = TIM2_IRQn;		
-			break;
-		case _T3_:
-			NVIC_InitStructure.NVIC_IRQChannel = TIM3_IRQn;		
-			break;
-		case _T4_:
-			NVIC_InitStructure.NVIC_IRQChannel = TIM4_IRQn;		
-			break;
-		#ifdef STM32F10X_HD
-		case _T5_:
-			NVIC_InitStructure.NVIC_IRQChannel = TIM5_IRQn;		
-			break;
-		case _T6_:
-			NVIC_InitStructure.NVIC_IRQChannel = TIM6_IRQn;		
-			break;
-		case _T7_:
-			NVIC_InitStructure.NVIC_IRQChannel = TIM7_IRQn;		
-			break;
-		#endif
-		default:
-			return false;
+	TIM_OCInitTypeDef TIM_OCInitStructure= {0};
+	if(_IS_GENERAL_TIMER(timer_number)){
+		/*使能定时器时钟*/
+		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2 << timer_number, ENABLE);	
+		
+		/*初始化TIM中断优先级*/
+		switch(timer_number)
+		{
+			case _T2_:
+				NVIC_InitStructure.NVIC_IRQChannel = TIM2_IRQn;		
+				break;
+			case _T3_:
+				NVIC_InitStructure.NVIC_IRQChannel = TIM3_IRQn;		
+				break;
+			case _T4_:
+				NVIC_InitStructure.NVIC_IRQChannel = TIM4_IRQn;		
+				break;
+			#ifdef STM32F10X_HD
+			case _T5_:
+				NVIC_InitStructure.NVIC_IRQChannel = TIM5_IRQn;		
+				break;
+			case _T6_:
+				NVIC_InitStructure.NVIC_IRQChannel = TIM6_IRQn;		
+				break;
+			case _T7_:
+				NVIC_InitStructure.NVIC_IRQChannel = TIM7_IRQn;		
+				break;
+			#endif
+			default:
+				return false;
+		}	
+		NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);			/*2位抢占优先级，2位响应优先级*/
+		NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;	
+		NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
+		NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+		NVIC_Init(&NVIC_InitStructure);	
+
+		/*初始化定时器*/
+		TIM_DeInit(TIMER(timer_number));										    
+		TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);			/* Fpclk1 = 72MHz */
+		TIM_TimeBaseStructure.TIM_Period        = period;		/*时钟周期*/
+		TIM_TimeBaseStructure.TIM_Prescaler     = prescaler;	/*预分频数   Fpclk1 / (8+1) = 8M*/
+		TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;
+		TIM_TimeBaseStructure.TIM_CounterMode   = TIM_CounterMode_Up;
+		TIM_TimeBaseInit(TIMER(timer_number), &TIM_TimeBaseStructure);
+		TIM_ARRPreloadConfig(TIMER(timer_number), DISABLE);					/*不用预装载，直接修改到影子寄存器*/
+		TIM_SelectOutputTrigger(TIMER(timer_number), TIM_TRGOSource_Update);	/* TIMER TRGO selection */
+		TIM_ClearFlag(TIMER(timer_number), TIM_FLAG_Update);					/*清定时器溢出标志位*/
+		TIM_ITConfig(TIMER(timer_number), TIM_IT_Update, ENABLE);				/*使能定时器溢出中断*/
+	}else{
+		RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);
+		GPIO_PinRemapConfig(GPIO_FullRemap_TIM1, ENABLE);
+		NVIC_InitStructure.NVIC_IRQChannel = TIM1_UP_IRQn;
+		NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);			/*2位抢占优先级，2位响应优先级*/
+		NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;	
+		NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
+		NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+		NVIC_Init(&NVIC_InitStructure);	
+		
+		TIM_DeInit(TIM1);										    
+		TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);			/* Fpclk1 = 72MHz */
+		TIM_TimeBaseStructure.TIM_Period        = period;		/*时钟周期*/
+		TIM_TimeBaseStructure.TIM_Prescaler     = prescaler;	/*预分频数   Fpclk1 / (8+1) = 8M*/
+		TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;
+		TIM_TimeBaseStructure.TIM_CounterMode   = TIM_CounterMode_Up;
+		TIM_TimeBaseInit(TIM1, &TIM_TimeBaseStructure);
+		TIM_ARRPreloadConfig(TIM1, DISABLE);					/*不用预装载，直接修改到影子寄存器*/
+		TIM_SelectOutputTrigger(TIM1, TIM_TRGOSource_Update);	/* TIMER TRGO selection */
+		TIM_ClearFlag(TIM1, TIM_FLAG_Update);					/*清定时器溢出标志位*/
+		TIM_ITConfig(TIM1, TIM_IT_Update, ENABLE);				/*使能定时器溢出中断*/
+		
+		TIM_OCStructInit(&TIM_OCInitStructure);
+		TIM_OCInitStructure.TIM_OCIdleState = TIM_OCIdleState_Set;
+		TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
+		TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+		TIM_OCInitStructure.TIM_OutputNState = TIM_OutputNState_Enable; 
+		TIM_OCInitStructure.TIM_Pulse = period / 2;
+		TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
+		TIM_OCInitStructure.TIM_OCNPolarity = TIM_OCNPolarity_High;
+		TIM_OC1Init(TIM1, &TIM_OCInitStructure);
+		TIM_OC1PreloadConfig(TIM1, TIM_OCPreload_Disable);
 	}	
-    NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);			/*2位抢占优先级，2位响应优先级*/
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;	
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
-    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-    NVIC_Init(&NVIC_InitStructure);	
-	
-	/*初始化定时器*/
-    TIM_DeInit(TIMER(timer_number));										    
-    TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);			/* Fpclk1 = 72MHz */
-    TIM_TimeBaseStructure.TIM_Period        = period;		/*时钟周期*/
-    TIM_TimeBaseStructure.TIM_Prescaler     = prescaler;	/*预分频数   Fpclk1 / (8+1) = 8M*/
-    TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;
-    TIM_TimeBaseStructure.TIM_CounterMode   = TIM_CounterMode_Up;
-    TIM_TimeBaseInit(TIMER(timer_number), &TIM_TimeBaseStructure);
-    TIM_ARRPreloadConfig(TIMER(timer_number), DISABLE);					/*不用预装载，直接修改到影子寄存器*/
-    TIM_SelectOutputTrigger(TIMER(timer_number), TIM_TRGOSource_Update);	/* TIMER TRGO selection */
-    TIM_ClearFlag(TIMER(timer_number), TIM_FLAG_Update);					/*清定时器溢出标志位*/
-    TIM_ITConfig(TIMER(timer_number), TIM_IT_Update, ENABLE);				/*使能定时器溢出中断*/
-	
 	return true;
 }
 
@@ -93,7 +129,14 @@ bool BSP_Init_TimerInterrupt(BSP_TIMER_ENUM timer_number, uint16_t period, uint1
 */
 void BSP_SetTimer(BSP_TIMER_ENUM timer_number, uint32_t time)
 {
-	TIM_SetAutoreload(TIMER(timer_number), time);
+	if(_IS_GENERAL_TIMER(timer_number)){
+		TIM_SetAutoreload(TIMER(timer_number), time);
+	}else{
+		TIM_SetAutoreload(TIM1, time);
+		TIM1->CCR1 = time/2;
+		
+	}
+
 }
 
 /* 启动定时器工作
@@ -102,7 +145,12 @@ void BSP_SetTimer(BSP_TIMER_ENUM timer_number, uint32_t time)
 */
 void BSP_EnTimer(BSP_TIMER_ENUM timer_number)
 {
-	TIM_Cmd(TIMER(timer_number), ENABLE);
+	if(_IS_GENERAL_TIMER(timer_number)){
+		TIM_Cmd(TIMER(timer_number), ENABLE);
+	}else{
+		TIM_Cmd(TIM1, ENABLE);
+		TIM_CtrlPWMOutputs(TIM1, ENABLE);
+	}
 }
 
 /* 中止定时器工作
@@ -111,14 +159,33 @@ void BSP_EnTimer(BSP_TIMER_ENUM timer_number)
 */
 void BSP_DisTimer(BSP_TIMER_ENUM timer_number)
 {
-	TIM_Cmd(TIMER(timer_number), DISABLE);
-	TIM_ClearITPendingBit(TIMER(timer_number), TIM_IT_Update);
-	TIM_SetCounter(TIMER(timer_number), 0);	/*20200221 增加，解决STEP信号突然中断的问题*/
+	if(_IS_GENERAL_TIMER(timer_number)){
+		TIM_Cmd(TIMER(timer_number), DISABLE);
+		TIM_ClearITPendingBit(TIMER(timer_number), TIM_IT_Update);
+		TIM_SetCounter(TIMER(timer_number), 0);	/*20200221 增加，解决STEP信号突然中断的问题*/
+	}else{
+		TIM_Cmd(TIM1, DISABLE);
+		TIM_ClearITPendingBit(TIM1, TIM_IT_Update);
+		TIM_SetCounter(TIM1, 0);
+		TIM_CtrlPWMOutputs(TIM1, DISABLE);
+	}
 }
 
 /* 中断函数
   ----------------------------------------------------------------------*/
- 
+ /* TIM1中断
+  --------------------------------
+*/
+void TIM1_UP_IRQHandler(void)
+{
+    if(TIM_GetITStatus(TIM1, TIM_IT_Update) != RESET)	/*产生了更新中断*/
+    {
+        TIM_ClearITPendingBit(TIM1, TIM_IT_Update);		/*清除更新中断*/
+//		PEout(9) = ~PEout(9);
+//		if(BSP_TimerIRQHandler[0] != 0)
+//			(*BSP_TimerIRQHandler[0])();
+	}
+}
 /* TIM2中断
   --------------------------------
 */
@@ -127,8 +194,9 @@ void TIM2_IRQHandler(void)
     if(TIM_GetITStatus(TIM2, TIM_IT_Update) != RESET)	/*产生了更新中断*/
     {
         TIM_ClearITPendingBit(TIM2, TIM_IT_Update);		/*清除更新中断*/
-		if(BSP_TimerIRQHandler[0] != 0)
-			(*BSP_TimerIRQHandler[0])();
+		PEout(9) = ~PEout(9);
+//		if(BSP_TimerIRQHandler[0] != 0)
+//			(*BSP_TimerIRQHandler[0])();
 	}
 }
 

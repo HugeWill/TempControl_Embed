@@ -89,7 +89,7 @@ DRV_STEPMOTOR_TYPE* Motor_Init(DRV_STEPMOTOR_ENUM id, uint8_t subdivision, \
 	{
 		case MOTOR_1:
 			/*------------------------------------------常量*/
-			p_unit->step_pin = PWM_Init(PWM_1, _T2_, step_port_number, step_pin_number);	/*初始化PWM模块*/
+			p_unit->step_pin = PWM_Init(PWM_1, _TIMER_BUTT_, step_port_number, step_pin_number);	/*初始化PWM模块*/
 			break;
 			
 		case MOTOR_2:

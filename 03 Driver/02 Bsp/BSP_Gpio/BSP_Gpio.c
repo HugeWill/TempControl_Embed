@@ -82,6 +82,12 @@ bool BSP_Init_Pin(BSP_PORT_ENUM port_number, BSP_PIN_ENUM pin_number, BSP_IO_TYP
 		case _IN_AIN_:
 			GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
 			break;
+		case _AF_OD_:
+			GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_OD;
+			break;
+		case _AF_PP_:
+			GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+			break;
 		default:
 			return false;
 	}

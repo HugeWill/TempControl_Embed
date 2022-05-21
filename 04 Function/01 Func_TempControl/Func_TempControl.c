@@ -135,7 +135,8 @@ static bool Func_TempInit()
 													_PE_,_P9_);
 	BSP_Init_Pin(_PE_,_P10_,_OUT_PP_);
 	BSP_WritePin(_PE_,_P10_,1);
-	BSP_WritePin(_PE_,_P8_,1);
+	BSP_WritePin(_PE_,_P8_,0);
+	BSP_WritePin(_PE_,_P7_,0);
 	if(_gp_StepPump == NULL)
 		return false;
 //	//Default Speed
@@ -520,14 +521,14 @@ void Task2()
 }
 void TaskResident1()
 {
-	PWM_Config(_gp_StepPump->motor->step_pin,1,1000);		//400pps (microstep) default
+	PWM_Config(_gp_StepPump->motor->step_pin,1,400);		//1250pps (microstep) default
 	while(1)
 	{
 		if(_g_Motor == 1 && _gp_StepPump->motor->step_pin->status != PWM_BUSY)
 		{
 			PWM_Enable(_gp_StepPump->motor->step_pin);
 		}
-		else
+		else if(_g_Motor == 0)
 		{
 			PWM_Disable(_gp_StepPump->motor->step_pin);
 		}
@@ -621,7 +622,7 @@ void Task3()
 				if(_g_ControlParameter.mode == 1)
 				{
 					_Func_AllFreezerOff();
-					if(_g_ControlParameter.goal_temp_multiply100/100 > Cur_temp[_g_ControlParameter.current_ch])
+					if(_g_ControlParameter.goal_temp_multiply100/100.0 > Cur_temp[_g_ControlParameter.current_ch])
 					{
 						_Func_HeaterON();
 					}
@@ -630,18 +631,6 @@ void Task3()
 						_Func_HeaterOFF();
 					}
 				}
-//				if(_g_ControlParameter.mode == 1)
-//				{
-//					for(i = 0; i < _g_ControlParameter.speed; i++)
-//					{ 
-//						if(Drv_PidTuning(&_g_PIDTUNNING[i+COLD_MAX], Cur_temp[_g_ControlParameter.current_ch]) == END)
-//						{
-//							SofeTimer[i] = OSTmrCreate(10,1,OS_TMR_OPT_PERIODIC,SoftTimerCallBack[i], (void *)0, (INT8U *)"timer1",&err);
-//							OSTmrStart(SofeTimer[i],&err);
-//						}
-//					}
-//				}
-//				OSTimeDlyHMSM(0, 0, 1, 0);
 			}
 			else
 			{
@@ -794,7 +783,6 @@ void TaskCmdScheduler2(void* p_arg)
 */
 bool Func_Cmd_Com_StepPump_Control(void* p_buffer)
 {
-	uint8_t i = 0;
 	COMMON_CMD_DATA* p_msg = (COMMON_CMD_DATA*)p_buffer;
 	STEPPUMPCONTROL_TYPE* p_data = (STEPPUMPCONTROL_TYPE*)p_msg->data;
 	COMMON_RETURN_DATA_TYPE* p_return = (COMMON_RETURN_DATA_TYPE*)malloc(sizeof(COMMON_RETURN_DATA_TYPE));
@@ -803,7 +791,7 @@ bool Func_Cmd_Com_StepPump_Control(void* p_buffer)
 	uint16_t cmd = p_data->cmd;
 	p_return->cmd = cmd;
 	_g_MotorSpeed = p_data->speed;
-	PWM_Config(_gp_StepPump->motor->step_pin,1,8000000/(2*_g_MotorSpeed*16));		//400pps (microstep) 16microsteps
+	PWM_Config(_gp_StepPump->motor->step_pin,1,8000000/(_g_MotorSpeed*16));		//400pps (microstep) 16microsteps
 	_Drv_UsartReturnDoneToBuffer(frame_id,cmd,sizeof(COMMON_RETURN_DATA_TYPE),(uint8_t*)p_return);
 	free(p_return);
 	return true;
@@ -853,8 +841,6 @@ bool Func_X100_Para_RW(void* p_buffer)
 
 	_Drv_UsartReturnDoneToBuffer(frame_id,cmd,sizeof(COMMON_RETURN_DATA_TYPE),(uint8_t*)p_return);
 	free(p_return);
-//	OSTimeDlyHMSM(0,0,0,50);			//wait for response to uppermachine
-//	BSP_Reboot();
 	return true;
 
 }
@@ -893,33 +879,44 @@ bool Func_Temp_Para_RW(void* p_buffer)
 	}
 	else
 	{
-		_g_ControlParameter.mode = p_data->mode;
-		_g_ControlParameter.pid_switch = p_data->pid_switch;
-		_g_ControlParameter.current_ch = p_data->goal_ch;
-		_g_ControlParameter.goal_temp_multiply100 = p_data->goal_temp_multiply100;
-		_g_ControlParameter.speed = p_data->speed;	
-		_g_PIDTUNNING[COLD1].pid->setpoint = p_data->goal_temp_multiply100;
-		_g_PIDTUNNING[COLD2].pid->setpoint = p_data->goal_temp_multiply100;
-		_g_PIDTUNNING[COLD3].pid->setpoint = p_data->goal_temp_multiply100;
-		_g_PIDTUNNING[COLD4].pid->setpoint = p_data->goal_temp_multiply100;
-		Drv_PidReset(_g_PIDTUNNING[COLD1].pid);
-		Drv_PidReset(_g_PIDTUNNING[COLD2].pid);
-		Drv_PidReset(_g_PIDTUNNING[COLD3].pid);
-		Drv_PidReset(_g_PIDTUNNING[COLD4].pid);
-		if(p_data->pid_switch == 0)
+		if(p_data->mode == 1)
 		{
+			_g_ControlParameter.mode = p_data->mode;
+			_g_ControlParameter.pid_switch = p_data->pid_switch;
+			_g_ControlParameter.current_ch = p_data->goal_ch;
+			if(_g_ControlParameter.current_ch != 0)
+				_g_ControlParameter.current_ch = 0;			/*Switch to outside tempsensor*/
+			_g_ControlParameter.goal_temp_multiply100 = p_data->goal_temp_multiply100;
+			_g_ControlParameter.speed = p_data->speed;	
+			_g_PIDTUNNING[COLD1].pid->setpoint = p_data->goal_temp_multiply100/100.0;
+			_g_PIDTUNNING[COLD2].pid->setpoint = p_data->goal_temp_multiply100/100.0;
+			_g_PIDTUNNING[COLD3].pid->setpoint = p_data->goal_temp_multiply100/100.0;
+			_g_PIDTUNNING[COLD4].pid->setpoint = p_data->goal_temp_multiply100/100.0;
+			Drv_PidReset(_g_PIDTUNNING[COLD1].pid);
+			Drv_PidReset(_g_PIDTUNNING[COLD2].pid);
+			Drv_PidReset(_g_PIDTUNNING[COLD3].pid);
+			Drv_PidReset(_g_PIDTUNNING[COLD4].pid);
+			if(p_data->pid_switch == 0)
+			{
+				_Func_AllHeaterOff();
+				_Func_AllFreezerOff();
+			}
+		}
+		else{
+			_g_ControlParameter.pid_switch = 0;
+			_g_ControlParameter.current_ch = 6;
+			_g_ControlParameter.goal_temp_multiply100 = 1200;
+			_g_PIDTUNNING[COLD1].pid->setpoint = 1200/100.0;
+			_g_PIDTUNNING[COLD2].pid->setpoint = 1200/100.0;
+			_g_PIDTUNNING[COLD3].pid->setpoint = 1200/100.0;
+			_g_PIDTUNNING[COLD4].pid->setpoint = 1200/100.0;
+			Drv_PidReset(_g_PIDTUNNING[COLD1].pid);
+			Drv_PidReset(_g_PIDTUNNING[COLD2].pid);
+			Drv_PidReset(_g_PIDTUNNING[COLD3].pid);
+			Drv_PidReset(_g_PIDTUNNING[COLD4].pid);
 			_Func_AllHeaterOff();
 			_Func_AllFreezerOff();
 		}
-//		i = At24c32WritePage(_gp_E,1,(uint8_t*)(&_g_ControlParameter));
-
-//		if(i != true)
-//		{
-//			_Drv_UsartReturnFailToBuffer(frame_id,cmd,sizeof(RETURN_ERR_DATA_TYPE),(uint8_t*)p_err);
-//			free(p_err);
-//			free(p_return);
-//			return false;
-//		}
 		_Drv_UsartReturnDoneToBuffer(frame_id,cmd,sizeof(COMMON_RETURN_DATA_TYPE),(uint8_t*)p_return);
 		free(p_err);
 		free(p_return);

@@ -73,7 +73,7 @@ DRV_PUMP_TYPE* PumpInit(DRV_PUMP_ENUM id, \
 	p_unit->fre         = fre;						/*频率*/
 	p_unit->duty_cycle  = duty_cycle;				/*占空比*/
 	p_unit->timer_number      = timer_number;		/*使用的定时器*/
-	BSP_Init_TimerInterrupt(timer_number, 1000, 8);		/*初始化定时器中断,周期1000,8分频*/
+//	BSP_Init_TimerInterrupt(timer_number, 1000, 8);		/*初始化定时器中断,周期1000,8分频*/
 	BSP_TimerIRQHandler[timer_number] = _Drv_PumpIRQHandler;	/*注册中断处理函数*/
 	p_unit->power_port_number = power_port_number;	/*电源引脚端口号*/
 	p_unit->power_pin_number  = power_pin_number;	/*电源引脚序号*/
@@ -96,8 +96,8 @@ DRV_PUMP_TYPE* PumpInit(DRV_PUMP_ENUM id, \
 		BSP_WritePin(p_unit->power_port_number, p_unit->power_pin_number, p_unit->power_pin_buffer);
 	}
 	
-	BSP_SetTimer(p_unit->timer_number, 8000000 * 2 / fre );	/*定时器中断时基8MHz，初始化定时器中断平率*/
-	BSP_EnTimer(p_unit->timer_number);				/*启动定时器*/
+//	BSP_SetTimer(p_unit->timer_number, 8000000 * 2 / fre );	/*定时器中断时基8MHz，初始化定时器中断平率*/
+//	BSP_EnTimer(p_unit->timer_number);				/*启动定时器*/
 	
 	return p_unit;
 }

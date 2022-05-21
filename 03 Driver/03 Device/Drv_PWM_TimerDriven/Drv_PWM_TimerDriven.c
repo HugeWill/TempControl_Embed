@@ -70,23 +70,25 @@ DRV_PWM_TIMERDRIVEN_TYPE* PWM_Init(DRV_PWM_TIMERDRIVEN_ENUM id, \
 	p_unit->timer_number    = timer_number;				/*使用的定时器*/
 	p_unit->port_number     = port_number;				/*引脚端口号*/
 	p_unit->pin_number      = pin_number;				/*引脚序号*/
-	BSP_Init_Pin(port_number, pin_number, _OUT_PP_);	/*初始化引脚*/
+	BSP_Init_Pin(port_number, pin_number, _AF_PP_);	/*初始化引脚*/
 	BSP_Init_TimerInterrupt(timer_number, 1000, 8);		/*初始化定时器中断,周期1000,8分频*/
-	switch((uint8_t)(p_unit->id))
+	if(timer_number != _TIMER_BUTT_)
 	{
-		case PWM_1: BSP_TimerIRQHandler[p_unit->timer_number] = _Drv_PWM1IRQHandler;
-		break;
-		
-		case PWM_2: BSP_TimerIRQHandler[p_unit->timer_number] = _Drv_PWM2IRQHandler;
-		break;
-		
-		case PWM_3: BSP_TimerIRQHandler[p_unit->timer_number] = _Drv_PWM3IRQHandler;
-		break;
-		
-		case PWM_4: BSP_TimerIRQHandler[p_unit->timer_number] = _Drv_PWM4IRQHandler;
-		break;
+		switch((uint8_t)(p_unit->id))
+		{
+			case PWM_1: BSP_TimerIRQHandler[p_unit->timer_number] = _Drv_PWM1IRQHandler;
+			break;
+			
+			case PWM_2: BSP_TimerIRQHandler[p_unit->timer_number] = _Drv_PWM2IRQHandler;
+			break;
+			
+			case PWM_3: BSP_TimerIRQHandler[p_unit->timer_number] = _Drv_PWM3IRQHandler;
+			break;
+			
+			case PWM_4: BSP_TimerIRQHandler[p_unit->timer_number] = _Drv_PWM4IRQHandler;
+			break;
+		}
 	}
-	
 	/*------------------------------变常*/
 	p_unit->total_pulse     = 0;				/*总脉冲数*/
 	p_unit->fre             = 0;				/*输出频率*/

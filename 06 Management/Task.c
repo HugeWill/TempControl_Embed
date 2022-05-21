@@ -55,7 +55,7 @@ void TaskStart(void* p_arg)
 	OSTaskCreate(TaskCmdScheduler1,  NULL, \
 				(OS_STK*)&g_TaskCmdScheduler1_Stk[TASK_CMD_SCHEDULER1_STK_SIZE - 1], \
 				TASK_CMD_SCHEDULER1_PRIO);	/*指令调度器1*/
-		OSTaskCreate(TaskCmdScheduler2,  NULL, \
+	OSTaskCreate(TaskCmdScheduler2,  NULL, \
 				(OS_STK*)&g_TaskCmdScheduler2_Stk[TASK_CMD_SCHEDULER2_STK_SIZE - 1], \
 				TASK_CMD_SCHEDULER2_PRIO);	/*指令调度器2*/
 				

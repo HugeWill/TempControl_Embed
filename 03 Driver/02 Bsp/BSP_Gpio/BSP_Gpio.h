@@ -68,6 +68,8 @@ typedef enum{
 	_IN_IPD_,			/*下拉输入*/
 	_IN_IPU_,			/*上拉输入*/
 	_IN_AIN_,			/*模拟输入*/
+	_AF_PP_,
+	_AF_OD_,
 	_IO_TYPE_BUTT_
 } BSP_IO_TYPE_ENUM;
 
